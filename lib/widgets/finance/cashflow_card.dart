@@ -47,7 +47,7 @@ class _CashflowCardState extends State<CashflowCard> {
             children: [
               Row(
                 children: [
-                  const Text('Arus Kas',
+                  const Text('Arus kas',
                       style:
                           TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
                   const SizedBox(width: 8),

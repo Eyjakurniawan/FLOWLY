@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../utils/helpers.dart';
+
 import '../services/auth_service.dart';
 import '../services/setup_service.dart';
 import '../utils/app_colors.dart';
@@ -26,7 +28,7 @@ class ComingSoonTab extends StatelessWidget {
           ),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(32, 0, 32, 100),
+              padding: EdgeInsets.fromLTRB(32, 0, 32, Helpers.navClearance(context) - 24),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -61,7 +63,7 @@ class ProfileTab extends StatelessWidget {
     return SafeArea(
       bottom: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 0, 24, 100),
+        padding: EdgeInsets.fromLTRB(24, 0, 24, Helpers.navClearance(context) - 24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [

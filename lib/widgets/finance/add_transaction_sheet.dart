@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../models/finance_models.dart';
+import '../../services/auth_service.dart';
 import '../../services/finance_store.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/formatters.dart';
+import '../../utils/helpers.dart';
 import '../mascot_view.dart';
 import '../primary_button.dart';
 import '../../screens/category_wallet_screen.dart';
@@ -28,6 +30,19 @@ Future<void> showAddTransactionSheet(BuildContext context) async {
   // Pop-up "Tersimpan!" -> "Catat lagi" membuka form transaksi baru.
   final again = await showTxSavedSheet(context, info);
   if (again && context.mounted) await showAddTransactionSheet(context);
+}
+
+/// Buka form ubah transaksi (dari riwayat). Form yang sama dengan Catat
+/// transaksi, hanya terisi data transaksi yang dipilih.
+Future<void> showEditTransactionSheet(
+    BuildContext context, FlowTransaction tx) async {
+  final ok = await showFlowlySheet<bool>(
+    context,
+    (_) => _AddTxSheet(editing: tx),
+  );
+  if (ok == true && context.mounted) {
+    Helpers.showSnack(context, 'Transaksi diperbarui.');
+  }
 }
 
 /// Chip dengan garis putus-putus.
@@ -58,23 +73,44 @@ class _DashedChip extends StatelessWidget {
   }
 }
 
+/// Garis putus-putus chip "+ Baru" / "+ Tambah dompet". Semua chip memakai
+/// painter ini, jadi tebal, panjang garis, dan jarak antar garis selalu sama.
 class _DashedRRectPainter extends CustomPainter {
+  static const _color = Color(0xFF5B6B8F);
+  static const _strokeWidth = 1.2;
+  static const _radius = 18.0;
+  static const _dash = 4.0;
+  static const _gap = 3.0;
+
   @override
   void paint(Canvas canvas, Size size) {
+    // Garis digambar di DALAM batas chip (dikecilkan setengah tebal garis).
+    // Kalau digambar tepat di tepi, separuh tebalnya terpotong oleh area
+    // scroll sehingga sisi atas/bawah terlihat lebih tipis dari sisi lain.
+    const inset = _strokeWidth / 2;
     final path = Path()
       ..addRRect(RRect.fromRectAndRadius(
-        Offset.zero & size,
-        const Radius.circular(18),
+        Rect.fromLTWH(
+            inset, inset, size.width - _strokeWidth, size.height - _strokeWidth),
+        const Radius.circular(_radius - inset),
       ));
     final paint = Paint()
-      ..color = const Color(0xFF5B6B8F)
+      ..color = _color
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
+      ..strokeWidth = _strokeWidth
+      ..isAntiAlias = true;
+
     for (final metric in path.computeMetrics()) {
-      var d = 0.0;
-      while (d < metric.length) {
-        canvas.drawPath(metric.extractPath(d, d + 4), paint);
-        d += 7;
+      // Bagi keliling jadi jumlah pola bulat supaya garis menutup rapi tanpa
+      // garis terpotong atau celah yang lebih lebar di titik awal.
+      const pattern = _dash + _gap;
+      final count = (metric.length / pattern).round().clamp(1, 1 << 20);
+      final k = metric.length / (count * pattern);
+      final dash = _dash * k;
+      final step = pattern * k;
+      for (var i = 0; i < count; i++) {
+        final d = i * step;
+        canvas.drawPath(metric.extractPath(d, d + dash), paint);
       }
     }
   }
@@ -84,7 +120,9 @@ class _DashedRRectPainter extends CustomPainter {
 }
 
 class _AddTxSheet extends StatefulWidget {
-  const _AddTxSheet();
+  /// Diisi kalau form dipakai untuk mengubah transaksi yang sudah ada.
+  final FlowTransaction? editing;
+  const _AddTxSheet({this.editing});
 
   @override
   State<_AddTxSheet> createState() => _AddTxSheetState();
@@ -108,7 +146,20 @@ class _AddTxSheetState extends State<_AddTxSheet> {
   @override
   void initState() {
     super.initState();
-    if (_store.wallets.isNotEmpty) _wallet = _store.wallets.first.name;
+    final e = widget.editing;
+    if (e == null) {
+      if (_store.wallets.isNotEmpty) _wallet = _store.wallets.first.name;
+      return;
+    }
+    _type = e.type;
+    _category = TxCategory.byType(e.type)
+            .where((c) => c.name == e.category.name)
+            .firstOrNull ??
+        e.category;
+    _wallet = e.wallet;
+    _date = DateTime(e.date.year, e.date.month, e.date.day);
+    _amount.text = Fmt.groupDigits(e.amount.toString());
+    _note.text = e.title == e.category.name ? '' : e.title;
   }
 
   @override
@@ -122,21 +173,43 @@ class _AddTxSheetState extends State<_AddTxSheet> {
   bool get _canSave =>
       _value > 0 && _wallet != null && _category != null && !_insufficient;
 
-  /// Saldo dompet yang dipilih (null kalau belum ada dompet).
-  int? get _available => _wallet == null ? null : _store.availableIn(_wallet!);
+  /// Saldo dompet yang dipilih (null kalau belum ada dompet). Saat mengubah
+  /// transaksi, transaksi itu sendiri tidak dihitung (saldo tanpa dirinya).
+  int? get _available {
+    if (_wallet == null) return null;
+    final a = _store.availableIn(_wallet!);
+    if (a == null) return null;
+    final e = widget.editing;
+    if (e != null && e.wallet == _wallet && _store.countsInBalance(e)) {
+      return a - e.signedAmount;
+    }
+    return a;
+  }
 
-  /// Pengeluaran tidak boleh melebihi saldo dompet.
-  bool get _insufficient {
+  /// Pengeluaran melebihi saldo dompet.
+  bool get _expenseShort {
     final a = _available;
     return _type == TxType.expense && a != null && _value > a;
   }
+
+  /// Saat mengubah: pesan kalau perubahan membuat saldo dompet minus.
+  String? get _editBlocker {
+    final e = widget.editing;
+    if (e == null || _value <= 0 || _wallet == null) return null;
+    return _store.updateBlocker(
+        id: e.id, type: _type, amount: _value, wallet: _wallet!);
+  }
+
+  /// Saldo dompet tidak boleh minus.
+  bool get _insufficient =>
+      widget.editing == null ? _expenseShort : _editBlocker != null;
 
   Future<void> _pickDate() async {
     FocusManager.instance.primaryFocus?.unfocus();
     final picked = await showFlowlyDatePicker(
       context,
       initialDate: _date,
-      firstDate: DateTime(2020),
+      firstDate: AuthService.signupDate,
       lastDate: _today(),
     );
     if (picked != null && mounted) setState(() => _date = picked);
@@ -158,6 +231,25 @@ class _AddTxSheetState extends State<_AddTxSheet> {
   }
 
   void _save() {
+    final editing = widget.editing;
+    if (editing != null) {
+      final error = _store.updateTransaction(
+        id: editing.id,
+        type: _type,
+        amount: _value,
+        category: _category!,
+        wallet: _wallet!,
+        note: _note.text,
+        date: _date,
+      );
+      if (error != null) {
+        Helpers.showSnack(context, error);
+        setState(() {});
+        return;
+      }
+      Navigator.pop(context, true);
+      return;
+    }
     final saved = _store.addTransaction(
       type: _type,
       amount: _value,
@@ -195,7 +287,21 @@ class _AddTxSheetState extends State<_AddTxSheet> {
     }
     final text = selected == null
         ? 'Tambahkan dompet dulu'
-        : 'Saldo ${selected.name} tersedia ${_store.money(_store.balanceOf(selected))}';
+        : 'Saldo ${selected.name} tersedia ${_store.money(_available ?? _store.balanceOf(selected))}';
+    if (_insufficient && selected != null && !_expenseShort) {
+      // Hanya saat mengubah: perubahan membuat saldo dompet minus.
+      return Padding(
+        padding: const EdgeInsets.only(top: 10, bottom: 8),
+        child: Text(
+          _editBlocker ?? '',
+          style: const TextStyle(
+              fontSize: 12,
+              height: 1.4,
+              fontWeight: FontWeight.w600,
+              color: AppColors.primary),
+        ),
+      );
+    }
     if (_insufficient && selected != null) {
       final have = _available ?? 0;
       return Padding(
@@ -229,14 +335,15 @@ class _AddTxSheetState extends State<_AddTxSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
               Expanded(
-                child: Text('Catat transaksi',
-                    style:
-                        TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
+                child: Text(
+                    widget.editing == null ? 'Catat transaksi' : 'Ubah transaksi',
+                    style: const TextStyle(
+                        fontSize: 21, fontWeight: FontWeight.w800)),
               ),
-              MascotView(size: 40),
+              const MascotView(size: 40),
             ],
           ),
           const SizedBox(height: 14),
@@ -256,7 +363,7 @@ class _AddTxSheetState extends State<_AddTxSheet> {
           AmountField(
             controller: _amount,
             large: true,
-            errorText: _insufficient
+            errorText: _expenseShort
                 ? 'Melebihi saldo $_wallet (tersedia '
                     '${_store.money(_available ?? 0)}).'
                 : null,
@@ -329,7 +436,7 @@ class _AddTxSheetState extends State<_AddTxSheet> {
           ),
           _walletHint(),
           PrimaryButton(
-            label: 'Simpan transaksi',
+            label: widget.editing == null ? 'Simpan transaksi' : 'Simpan perubahan',
             onPressed: _canSave ? _save : null,
           ),
         ],

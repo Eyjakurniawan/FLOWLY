@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../services/app_data.dart';
+import '../widgets/connectivity_overlay.dart';
 import '../widgets/finance/add_transaction_sheet.dart';
 import '../widgets/finance/flowly_bottom_nav.dart';
 import 'dashboard_screen.dart';
@@ -18,6 +19,12 @@ class HomeScreen extends StatefulWidget {
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
+
+  /// Pindah ke [tab] (0 Beranda, 1 Dompet, 2 Laporan, 3 Profil) lalu,
+  /// kalau ada, buka halaman-halaman [pages] berurutan di dalam tab itu.
+  /// Dipakai tautan notifikasi.
+  static void openIn(int tab, [List<Widget> pages = const []]) =>
+      _HomeScreenState._current?._openIn(tab, pages);
 }
 
 class _HomeScreenState extends State<HomeScreen> {
@@ -27,9 +34,29 @@ class _HomeScreenState extends State<HomeScreen> {
   // tetap terlihat.
   final _navKeys = List.generate(4, (_) => GlobalKey<NavigatorState>());
 
+  static _HomeScreenState? _current;
+
+  void _openIn(int tab, List<Widget> pages) {
+    _switchTab(tab);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final nav = _navKeys[tab].currentState;
+      if (nav == null) return;
+      for (final page in pages) {
+        nav.push(MaterialPageRoute(builder: (_) => page));
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    if (_current == this) _current = null;
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
+    _current = this;
     // Muat kategori, dompet, transaksi, dan rencana dari Supabase.
     AppData.instance.ensureLoaded();
   }
@@ -65,51 +92,53 @@ class _HomeScreenState extends State<HomeScreen> {
         if (!didPop) _onBack();
       },
       child: Scaffold(
-        body: Stack(
-          children: [
-            IndexedStack(
-              index: _tab,
-              children: [
-                Navigator(
-                  key: _navKeys[0],
-                  onGenerateRoute: (_) => MaterialPageRoute(
-                    builder: (_) => DashboardScreen(
-                      onOpenWallet: () => _switchTab(1),
-                      onOpenReports: () => _switchTab(2),
+        body: ConnectivityOverlay(
+          child: Stack(
+            children: [
+              IndexedStack(
+                index: _tab,
+                children: [
+                  Navigator(
+                    key: _navKeys[0],
+                    onGenerateRoute: (_) => MaterialPageRoute(
+                      builder: (_) => DashboardScreen(
+                        onOpenWallet: () => _switchTab(1),
+                        onOpenReports: () => _switchTab(2),
+                      ),
                     ),
                   ),
-                ),
-                Navigator(
-                  key: _navKeys[1],
-                  onGenerateRoute: (_) => MaterialPageRoute(
-                    builder: (_) => const Scaffold(body: WalletTab()),
+                  Navigator(
+                    key: _navKeys[1],
+                    onGenerateRoute: (_) => MaterialPageRoute(
+                      builder: (_) => const Scaffold(body: WalletTab()),
+                    ),
                   ),
-                ),
-                Navigator(
-                  key: _navKeys[2],
-                  onGenerateRoute: (_) => MaterialPageRoute(
-                    builder: (_) => const ReportsScreen(),
+                  Navigator(
+                    key: _navKeys[2],
+                    onGenerateRoute: (_) => MaterialPageRoute(
+                      builder: (_) => const ReportsScreen(),
+                    ),
                   ),
-                ),
-                Navigator(
-                  key: _navKeys[3],
-                  onGenerateRoute: (_) => MaterialPageRoute(
-                    builder: (_) => const ProfileScreen(),
+                  Navigator(
+                    key: _navKeys[3],
+                    onGenerateRoute: (_) => MaterialPageRoute(
+                      builder: (_) => const ProfileScreen(),
+                    ),
                   ),
-                ),
-              ],
-            ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: FlowlyBottomNav(
-                current: _tab,
-                onTab: _switchTab,
-                onAdd: () => showAddTransactionSheet(context),
+                ],
               ),
-            ),
-          ],
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: FlowlyBottomNav(
+                  current: _tab,
+                  onTab: _switchTab,
+                  onAdd: () => showAddTransactionSheet(context),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

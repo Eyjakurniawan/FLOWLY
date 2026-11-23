@@ -29,6 +29,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _loading = false;
   bool _googleLoading = false;
+  bool _resetLoading = false;
+
+  /// Error di bawah kolom email saat "Lupa kata sandi?" diketuk.
+  String? _resetError;
 
   @override
   void dispose() {
@@ -74,22 +78,34 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _forgotPassword() async {
-    final emailError = Validators.email(_emailCtrl.text);
-    if (emailError != null) {
-      Helpers.showSnack(
-        context,
-        'Isi email kamu dulu, lalu ketuk "Lupa kata sandi?".',
-        isError: true,
-      );
+    FocusScope.of(context).unfocus();
+    if (_resetLoading) return;
+
+    final email = _emailCtrl.text.trim();
+    if (email.isEmpty) {
+      setState(() => _resetError = 'Isi email dulu untuk reset kata sandi.');
       return;
     }
-    final result = await AuthService.instance.resetPassword(_emailCtrl.text);
+    final formatError = Validators.email(email);
+    if (formatError != null) {
+      setState(() => _resetError = formatError);
+      return;
+    }
+
+    setState(() {
+      _resetError = null;
+      _resetLoading = true;
+    });
+    final result = await AuthService.instance.resetPassword(email);
     if (!mounted) return;
-    Helpers.showSnack(
-      context,
-      result.message ?? 'Gagal mengirim tautan reset.',
-      isError: !result.success,
-    );
+    setState(() => _resetLoading = false);
+
+    if (!result.success) {
+      Helpers.showSnack(context, result.message ?? 'Gagal mengirim tautan reset.',
+          isError: true);
+      return;
+    }
+    Helpers.showTopAlert(context, 'Tautan reset dikirim ke\n$email');
   }
 
   @override
@@ -104,31 +120,36 @@ class _LoginScreenState extends State<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const AuthHeader(),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
                 const MascotBubble(
                   title: 'Hai, balik lagi!',
                   subtitle: 'Aku jagain arus uangmu tadi.',
                   expression: MascotExpression.happy,
+                  authStyle: true,
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 14),
                 AppTextField(
                   label: 'Email',
-                  hint: 'nama@gmail.com',
+                  hint: 'nama@email.com',
                   controller: _emailCtrl,
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
                   validator: Validators.email,
+                  errorText: _resetError,
+                  onChanged: (_) {
+                    if (_resetError != null) setState(() => _resetError = null);
+                  },
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 AppTextField(
                   label: 'Kata sandi',
-                  hint: 'Kata sandi Anda',
+                  hint: 'Kata sandimu',
                   controller: _passCtrl,
                   isPassword: true,
                   textInputAction: TextInputAction.done,
                   validator: Validators.requiredPassword,
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
                 Align(
                   alignment: Alignment.centerRight,
                   child: GestureDetector(
@@ -143,7 +164,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 22),
                 PrimaryButton(
                   label: 'Masuk',
                   loading: _loading,

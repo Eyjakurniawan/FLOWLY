@@ -6,6 +6,7 @@ import '../../utils/app_colors.dart';
 import '../../utils/fit_text.dart';
 import '../../utils/formatters.dart';
 import 'common.dart';
+import 'transaction_actions.dart';
 
 class TransactionTile extends StatelessWidget {
   final FlowTransaction tx;
@@ -25,7 +26,11 @@ class TransactionTile extends StatelessWidget {
 
     final amountText = income ? '+$amount' : '-$amount';
 
-    return Padding(
+    // Ketuk transaksi -> pilihan Ubah / Hapus.
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => showTransactionActions(context, tx),
+      child: Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: LayoutBuilder(builder: (context, c) {
         // Lebar yang tersisa setelah ikon (46) dan jarak (14 + 10).
@@ -106,6 +111,7 @@ class TransactionTile extends StatelessWidget {
         ],
       );
       }),
+    ),
     );
   }
 }

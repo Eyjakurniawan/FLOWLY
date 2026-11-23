@@ -18,7 +18,14 @@ class FlowlyBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bottom = MediaQuery.of(context).padding.bottom;
+    // Tinggi area sistem di bawah (tombol back/home/recent atau garis gesture).
+    // Dipakai max(padding, viewPadding) supaya tetap terbaca di semua HP,
+    // dan 0 kalau HP tidak punya bar sistem.
+    final mq = MediaQuery.of(context);
+    final bottom =
+        mq.padding.bottom > mq.viewPadding.bottom
+            ? mq.padding.bottom
+            : mq.viewPadding.bottom;
     return Padding(
       padding: EdgeInsets.fromLTRB(16, 0, 16, 12 + bottom),
       child: Stack(
@@ -52,6 +59,7 @@ class FlowlyBottomNav extends StatelessWidget {
                   label: 'Dompet',
                   icon: Icons.wallet_outlined,
                   activeIcon: Icons.wallet_outlined,
+                  iconBuilder: (color) => _WalletIcon(color: color),
                   active: current == 1,
                   onTap: () => onTab(1),
                 ),
@@ -109,12 +117,16 @@ class _Item extends StatelessWidget {
   final bool active;
   final VoidCallback onTap;
 
+  /// Ikon gambar sendiri (menggantikan [icon]/[activeIcon] kalau diisi).
+  final Widget Function(Color color)? iconBuilder;
+
   const _Item({
     required this.label,
     required this.icon,
     required this.activeIcon,
     required this.active,
     required this.onTap,
+    this.iconBuilder,
   });
 
   @override
@@ -127,7 +139,14 @@ class _Item extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(active ? activeIcon : icon, size: 23, color: color),
+            if (iconBuilder != null)
+              SizedBox(
+                width: 23,
+                height: 23,
+                child: Center(child: iconBuilder!(color)),
+              )
+            else
+              Icon(active ? activeIcon : icon, size: 23, color: color),
             const SizedBox(height: 3),
             Text(
               label,
@@ -142,4 +161,60 @@ class _Item extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Ikon Dompet: kartu bergaris dengan strip di atas dan tab kecil di kanan.
+class _WalletIcon extends StatelessWidget {
+  final Color color;
+  const _WalletIcon({required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    const w = 23.0;
+    return SizedBox(
+      width: w,
+      height: w * _WalletIconPainter.h / _WalletIconPainter.w,
+      child: CustomPaint(painter: _WalletIconPainter(color)),
+    );
+  }
+}
+
+class _WalletIconPainter extends CustomPainter {
+  // Ukuran acuan gambar (satuan bebas), lalu diskalakan ke ukuran widget.
+  static const double w = 460;
+  static const double h = 370;
+  static const double _stroke = 45;
+
+  final Color color;
+  const _WalletIconPainter(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.scale(size.width / w, size.height / h);
+    const half = _stroke / 2;
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = _stroke
+      ..isAntiAlias = true;
+
+    // Badan kartu.
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        const Rect.fromLTWH(half, half, w - _stroke, h - _stroke),
+        const Radius.circular(67.5),
+      ),
+      paint,
+    );
+    // Strip di atas.
+    canvas.drawLine(
+        const Offset(half, 117.5), const Offset(w - half, 117.5), paint);
+    // Tab kecil di kanan.
+    paint.strokeCap = StrokeCap.round;
+    canvas.drawLine(
+        const Offset(317.5, 232.5), const Offset(367.5, 232.5), paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _WalletIconPainter old) => old.color != color;
 }

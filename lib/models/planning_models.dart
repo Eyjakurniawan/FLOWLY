@@ -19,11 +19,10 @@ enum PlanFrequency {
     return p < 1 ? 1 : p;
   }
 
-  /// Setoran per periode, dibulatkan ke atas ke kelipatan Rp1.000.
+  /// Saran setoran per periode (dibulatkan ke atas ke rupiah terdekat).
   int allocationFor(int remaining, DateTime target) {
     if (remaining <= 0) return 0;
-    final raw = (remaining / periodsUntil(target)).ceil();
-    return ((raw + 999) ~/ 1000) * 1000;
+    return (remaining / periodsUntil(target)).ceil();
   }
 }
 
@@ -112,7 +111,9 @@ class Planning {
     return p > 100 ? 100 : p;
   }
 
-  /// Sisa periode setoran sampai target tercapai.
-  int get periodsLeft =>
-      allocation <= 0 ? 0 : (remaining / allocation).ceil();
+  /// Saran setoran per periode, selalu dihitung ulang dari sisa target.
+  int get suggestion => frequency.allocationFor(remaining, target);
+
+  /// Jumlah periode dari sekarang sampai target selesai.
+  int get periodsLeft => isDone ? 0 : frequency.periodsUntil(target);
 }

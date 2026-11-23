@@ -29,6 +29,7 @@ Future<bool> showTxSavedSheet(BuildContext context, TxSavedInfo info) async {
   final again = await showFlowlySheet<bool>(
     context,
     (_) => _TxSavedSheet(info: info),
+    offlineOk: true,
   );
   return again == true;
 }

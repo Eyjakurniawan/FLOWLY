@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../models/finance_models.dart';
+import '../utils/constants.dart';
 import '../utils/formatters.dart';
 import 'app_data.dart';
 import 'category_store.dart';
+import 'notification_store.dart';
 
 /// Sumber data keuangan (sementara in-memory).
 ///
@@ -34,6 +36,10 @@ class FinanceStore extends ChangeNotifier {
   DateTime _shownMonth = _monthOf(DateTime.now());
   bool _hide = false;
   int _nextId = 1;
+
+  /// Id database tiap transaksi (kunci = id lokal). Berupa Future karena
+  /// transaksi baru bisa belum selesai disimpan saat diubah/dihapus.
+  final Map<int, Future<String?>> _txRemoteIds = {};
 
   /// Id database tiap dompet aktif (kunci = nama dompet). Berupa Future
   /// karena dompet baru bisa belum selesai disimpan saat dipakai.
@@ -77,6 +83,7 @@ class FinanceStore extends ChangeNotifier {
     _tx.clear();
     _orphanIds.clear();
     _walletIds.clear();
+    _txRemoteIds.clear();
     _nextId = 1;
     _month = _monthOf(DateTime.now());
     _shownMonth = _month;
@@ -122,6 +129,7 @@ class FinanceStore extends ChangeNotifier {
     final cats = CategoryStore.instance;
     final tx = <FlowTransaction>[];
     final orphans = <int>{};
+    final txIds = <int, Future<String?>>{};
     var nextId = 1;
     for (final e in raw) {
       final r = e.value;
@@ -130,6 +138,7 @@ class FinanceStore extends ChangeNotifier {
       final d = AppData.parseDate(r['transaction_date']) ?? DateTime.now();
       final note = (r['note'] as String?)?.trim();
       final id = nextId++;
+      txIds[id] = Future<String?>.value(r['id'] as String?);
       tx.add(FlowTransaction(
         id: id,
         title: (note == null || note.isEmpty) ? cat.name : note,
@@ -154,35 +163,47 @@ class FinanceStore extends ChangeNotifier {
     _walletIds
       ..clear()
       ..addAll(ids);
+    _txRemoteIds
+      ..clear()
+      ..addAll(txIds);
     _nextId = nextId;
     notifyListeners();
   }
 
+  static String _txTable(TxType t) =>
+      t == TxType.expense ? 'expenses' : 'incomes';
+
   /// Simpan transaksi baru; kalau gagal, transaksinya dibatalkan.
-  Future<void> _pushTransaction(FlowTransaction t, String? note) async {
+  /// Mengembalikan id database-nya (null kalau gagal).
+  Future<String?> _pushTransaction(FlowTransaction t, String? note) async {
     final walletId =
         await (_walletIds[t.wallet] ?? Future<String?>.value(null));
     final catId = await CategoryStore.instance.idOf(t.category);
     final n = note?.trim();
-    final ok = await AppData.run(() async {
+    final id = await AppData.guard<String>(() async {
       if (walletId == null || catId == null) {
         throw StateError('dompet/kategori belum tersimpan di server');
       }
-      await AppData.db
-          .from(t.type == TxType.expense ? 'expenses' : 'incomes')
+      final row = await AppData.db
+          .from(_txTable(t.type))
           .insert({
-        'user_id': AppData.uid,
-        'wallet_id': walletId,
-        'category_id': catId,
-        'amount': t.amount,
-        'note': (n == null || n.isEmpty) ? null : n,
-        'transaction_date': AppData.dateStr(t.date),
-      });
+            'user_id': AppData.uid,
+            'wallet_id': walletId,
+            'category_id': catId,
+            'amount': t.amount,
+            'note': (n == null || n.isEmpty) ? null : n,
+            'transaction_date': AppData.dateStr(t.date),
+          })
+          .select('id')
+          .single();
+      return row['id'] as String;
     }, message: 'Transaksi gagal disimpan, jadi dibatalkan. Coba lagi.');
-    if (!ok) {
+    if (id == null) {
       _tx.removeWhere((x) => x.id == t.id);
+      _txRemoteIds.remove(t.id);
       notifyListeners();
     }
+    return id;
   }
 
   /// Saldo satu dompet = saldo awal + semua transaksinya.
@@ -227,6 +248,13 @@ class FinanceStore extends ChangeNotifier {
       return false;
     }
     _wallets[i] = Wallet(n, type, initialBalance);
+    NotificationStore.instance.push(
+      title: 'Dompet diperbarui',
+      body: 'Dompet "$n" berhasil diubah.',
+      action: NotificationAction.openWallet,
+      refName: n,
+      mood: MascotExpression.wink,
+    );
     if (n != oldName) {
       for (var j = 0; j < _tx.length; j++) {
         if (_tx[j].wallet == oldName && !_orphanIds.contains(_tx[j].id)) {
@@ -258,6 +286,11 @@ class FinanceStore extends ChangeNotifier {
   /// Hapus dompetnya saja. Riwayat transaksinya tetap disimpan dan masih
   /// bisa dilihat di Reports, tapi tidak lagi dihitung ke total saldo.
   void removeWallet(String name) {
+    NotificationStore.instance.push(
+      title: 'Dompet dihapus',
+      body: 'Dompet "$name" sudah dihapus. Riwayat transaksinya tetap ada.',
+      action: NotificationAction.openWallets,
+    );
     for (final t in _tx) {
       if (t.wallet == name) _orphanIds.add(t.id);
     }
@@ -296,6 +329,13 @@ class FinanceStore extends ChangeNotifier {
     }
     final w = Wallet(n, type, initialBalance);
     _wallets.add(w);
+    NotificationStore.instance.push(
+      title: 'Dompet ditambahkan',
+      body: 'Dompet "$n" berhasil ditambahkan.',
+      action: NotificationAction.openWallet,
+      refName: n,
+      mood: MascotExpression.happy,
+    );
     final fut = AppData.guard<String>(() async {
       final row = await AppData.db
           .from('wallets')
@@ -355,9 +395,203 @@ class FinanceStore extends ChangeNotifier {
       date: when,
     );
     _tx.add(t);
+    NotificationStore.instance.push(
+      title: 'Transaksi dicatat',
+      body: _txSummary(t),
+      action: NotificationAction.openTransactions,
+      mood: MascotExpression.happy,
+    );
     notifyListeners();
-    _pushTransaction(t, note);
+    _txRemoteIds[t.id] = _pushTransaction(t, note);
     return true;
+  }
+
+  // ------------------------------------------------- ubah / hapus transaksi
+
+  /// "Pengeluaran Rp25.000 • Makanan • DANA"
+  String _txSummary(FlowTransaction t) =>
+      '${t.type == TxType.income ? 'Pemasukan' : 'Pengeluaran'} '
+      '${Fmt.rupiah(t.amount)} • ${t.category.name} • ${t.wallet}';
+
+  FlowTransaction? transactionById(int id) {
+    for (final t in _tx) {
+      if (t.id == id) return t;
+    }
+    return null;
+  }
+
+  /// true kalau transaksi ikut dihitung ke saldo sebuah dompet yang masih ada.
+  bool countsInBalance(FlowTransaction t) =>
+      !_orphanIds.contains(t.id) && walletByName(t.wallet) != null;
+
+  /// Pesan kenapa transaksi tidak boleh dihapus; null kalau boleh.
+  /// Menghapus pemasukan tidak boleh membuat saldo dompet minus.
+  String? deleteBlocker(FlowTransaction t) {
+    if (t.type != TxType.income || !countsInBalance(t)) return null;
+    final w = walletByName(t.wallet)!;
+    if (balanceOf(w) - t.amount < 0) {
+      return 'Transaksi ini tidak bisa dihapus karena saldo ${w.name} akan '
+          'minus. Hapus atau kecilkan pengeluaran di dompet ini dulu.';
+    }
+    return null;
+  }
+
+  /// Hapus transaksi dan sesuaikan saldo dompet. Null kalau berhasil,
+  /// selain itu pesan kenapa ditolak.
+  String? deleteTransaction(int id) {
+    final t = transactionById(id);
+    if (t == null) return 'Transaksi tidak ditemukan.';
+    final blocker = deleteBlocker(t);
+    if (blocker != null) return blocker;
+
+    NotificationStore.instance.push(
+      title: 'Transaksi dihapus',
+      body: _txSummary(t),
+      action: NotificationAction.openTransactions,
+    );
+    _tx.removeWhere((x) => x.id == id);
+    _orphanIds.remove(id);
+    final idFut = _txRemoteIds.remove(id);
+    notifyListeners();
+    idFut?.then((rid) async {
+      if (rid == null) return;
+      await AppData.run(
+        () => AppData.db.from(_txTable(t.type)).delete().eq('id', rid),
+        message: 'Transaksi gagal dihapus di server.',
+      );
+    });
+    return null;
+  }
+
+  /// Pesan kenapa perubahan transaksi ditolak (saldo dompet akan minus);
+  /// null kalau boleh. Dipakai form ubah supaya tombol simpan ikut terkunci.
+  String? updateBlocker({
+    required int id,
+    required TxType type,
+    required int amount,
+    required String wallet,
+  }) {
+    final old = transactionById(id);
+    if (old == null) return 'Transaksi tidak ditemukan.';
+    if (walletByName(wallet) == null) return 'Dompet tidak ditemukan.';
+
+    int after(String name) {
+      var b = balanceOf(walletByName(name)!);
+      if (countsInBalance(old) && old.wallet == name) b -= old.signedAmount;
+      if (wallet == name) b += type == TxType.expense ? -amount : amount;
+      return b;
+    }
+
+    for (final name in {if (countsInBalance(old)) old.wallet, wallet}) {
+      if (after(name) < 0) {
+        return 'Perubahan ini membuat saldo $name minus. Kecilkan nominal, '
+            'pilih dompet lain, atau catat pemasukan dulu.';
+      }
+    }
+    return null;
+  }
+
+  /// Ubah transaksi. Null kalau berhasil, selain itu pesan kenapa ditolak.
+  String? updateTransaction({
+    required int id,
+    required TxType type,
+    required int amount,
+    required TxCategory category,
+    required String wallet,
+    String? note,
+    required DateTime date,
+  }) {
+    final i = _tx.indexWhere((t) => t.id == id);
+    if (i < 0) return 'Transaksi tidak ditemukan.';
+    final old = _tx[i];
+    final blocker =
+        updateBlocker(id: id, type: type, amount: amount, wallet: wallet);
+    if (blocker != null) return blocker;
+
+    final now = DateTime.now();
+    // Tanggal tidak berubah: jam lama dipertahankan (urutan di hari itu tetap).
+    final when = Fmt.sameDay(date, old.date)
+        ? old.date
+        : (Fmt.sameDay(date, now)
+            ? now
+            : DateTime(date.year, date.month, date.day, 12));
+    final fresh = FlowTransaction(
+      id: id,
+      title: (note == null || note.trim().isEmpty) ? category.name : note.trim(),
+      category: category,
+      wallet: wallet,
+      amount: amount,
+      type: type,
+      date: when,
+    );
+    _tx[i] = fresh;
+    NotificationStore.instance.push(
+      title: 'Transaksi diubah',
+      body: _txSummary(fresh),
+      action: NotificationAction.openTransactions,
+      mood: MascotExpression.wink,
+    );
+    notifyListeners();
+    _pushTransactionUpdate(old, fresh, note);
+    return null;
+  }
+
+  /// Simpan perubahan ke server; kalau gagal, transaksi dikembalikan.
+  Future<void> _pushTransactionUpdate(
+      FlowTransaction old, FlowTransaction t, String? note) async {
+    final rid = await (_txRemoteIds[old.id] ?? Future<String?>.value(null));
+    final walletId =
+        await (_walletIds[t.wallet] ?? Future<String?>.value(null));
+    final catId = await CategoryStore.instance.idOf(t.category);
+    final n = note?.trim();
+    final data = <String, dynamic>{
+      'wallet_id': walletId,
+      'category_id': catId,
+      'amount': t.amount,
+      'note': (n == null || n.isEmpty) ? null : n,
+      'transaction_date': AppData.dateStr(t.date),
+    };
+
+    void revert() {
+      final j = _tx.indexWhere((x) => x.id == old.id);
+      if (j >= 0) _tx[j] = old;
+      notifyListeners();
+    }
+
+    if (old.type == t.type) {
+      final ok = await AppData.run(() async {
+        if (rid == null || walletId == null || catId == null) {
+          throw StateError('data belum tersimpan di server');
+        }
+        await AppData.db.from(_txTable(t.type)).update(data).eq('id', rid);
+      }, message: 'Perubahan transaksi gagal disimpan, jadi dibatalkan.');
+      if (!ok) revert();
+      return;
+    }
+
+    // Jenis berubah (pengeluaran <-> pemasukan): pindah tabel.
+    final newId = await AppData.guard<String>(() async {
+      if (walletId == null || catId == null) {
+        throw StateError('dompet/kategori belum tersimpan di server');
+      }
+      final row = await AppData.db
+          .from(_txTable(t.type))
+          .insert({'user_id': AppData.uid, ...data})
+          .select('id')
+          .single();
+      return row['id'] as String;
+    }, message: 'Perubahan transaksi gagal disimpan, jadi dibatalkan.');
+    if (newId == null) {
+      revert();
+      return;
+    }
+    _txRemoteIds[t.id] = Future<String?>.value(newId);
+    if (rid != null) {
+      await AppData.run(
+        () => AppData.db.from(_txTable(old.type)).delete().eq('id', rid),
+        message: 'Transaksi lama gagal dihapus di server.',
+      );
+    }
   }
 
   /// Format uang; disamarkan kalau mode sembunyikan saldo aktif.
@@ -380,8 +614,8 @@ class FinanceStore extends ChangeNotifier {
     final count = walletTransactions(w.name).length;
     final parts = <String>[
       '\u201C${w.name}\u201D dihapus permanen dan tidak bisa dikembalikan atau diedit.',
-      'Saldo ${money(balanceOf(w))} tidak lagi dihitung di total balance.',
-      if (count > 0) '$count riwayat transaksinya tetap bisa dilihat di Reports.',
+      'Saldo ${money(balanceOf(w))} tidak lagi dihitung di total saldo.',
+      if (count > 0) '$count riwayat transaksinya tetap bisa dilihat di Laporan.',
     ];
     return parts.join(' ');
   }
@@ -426,6 +660,16 @@ class FinanceStore extends ChangeNotifier {
         .where((t) => !t.date.isBefore(r.start) && t.date.isBefore(r.end))
         .toList();
   }
+
+  /// Total pengeluaran satu kategori di bulan [month] (semua dompet).
+  /// Dipakai fitur Anggaran.
+  int categoryExpenseInMonth(TxCategory c, DateTime month) => _tx
+      .where((t) =>
+          t.type == TxType.expense &&
+          t.category.name == c.name &&
+          t.date.year == month.year &&
+          t.date.month == month.month)
+      .fold<int>(0, (s, t) => s + t.amount);
 
   int incomeOf(Period p) => _sum(_inPeriod(p), TxType.income);
   int expenseOf(Period p) => _sum(_inPeriod(p), TxType.expense);

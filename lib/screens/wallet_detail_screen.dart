@@ -8,11 +8,32 @@ import '../widgets/delete_confirm_dialog.dart';
 import '../widgets/finance/common.dart';
 import '../widgets/finance/home_header.dart';
 import '../widgets/finance/transaction_widgets.dart';
+import 'category_wallet_screen.dart';
 
-/// Detail satu dompet: saldo terbaru, tombol hapus, dan riwayat transaksi.
-class WalletDetailScreen extends StatelessWidget {
+/// Detail satu dompet: saldo terbaru, tombol ubah dan hapus, serta riwayat
+/// transaksi.
+class WalletDetailScreen extends StatefulWidget {
   final String walletName;
   const WalletDetailScreen({super.key, required this.walletName});
+
+  @override
+  State<WalletDetailScreen> createState() => _WalletDetailScreenState();
+}
+
+class _WalletDetailScreenState extends State<WalletDetailScreen> {
+  // Nama bisa berubah setelah dompet diubah, jadi disimpan di state.
+  late String _name = widget.walletName;
+
+  Future<void> _edit(BuildContext context, Wallet wallet) async {
+    final r = await showEditWalletSheet(context, wallet);
+    if (r == null || !mounted) return;
+    if (r.deleted) {
+      Helpers.showSnack(context, 'Dompet "${r.name}" dihapus.');
+      Navigator.of(context).pop();
+    } else {
+      setState(() => _name = r.name);
+    }
+  }
 
   Future<void> _confirmDelete(
       BuildContext context, Wallet wallet, int count) async {
@@ -38,7 +59,7 @@ class WalletDetailScreen extends StatelessWidget {
         child: ListenableBuilder(
           listenable: store,
           builder: (context, _) {
-            final wallet = store.walletByName(walletName);
+            final wallet = store.walletByName(_name);
             if (wallet == null) return const SizedBox.shrink(); // baru dihapus
 
             final txs = store.walletTransactions(wallet.name);
@@ -50,7 +71,7 @@ class WalletDetailScreen extends StatelessWidget {
                 ),
                 Expanded(
                   child: ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 124),
+                    padding: EdgeInsets.fromLTRB(16, 10, 16, Helpers.navClearance(context)),
                     children: [
                       Row(
                         children: [
@@ -101,20 +122,19 @@ class WalletDetailScreen extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 16),
-                            GestureDetector(
-                              onTap: () =>
-                                  _confirmDelete(context, wallet, txs.length),
-                              child: Container(
-                                width: 48,
-                                height: 48,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                      color: AppColors.primary, width: 1.5),
+                            Row(
+                              children: [
+                                _RoundAction(
+                                  icon: Icons.edit_outlined,
+                                  onTap: () => _edit(context, wallet),
                                 ),
-                                child: const Icon(Icons.delete_outline_rounded,
-                                    color: AppColors.primary, size: 24),
-                              ),
+                                const SizedBox(width: 10),
+                                _RoundAction(
+                                  icon: Icons.delete_outline_rounded,
+                                  onTap: () => _confirmDelete(
+                                      context, wallet, txs.length),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -142,6 +162,29 @@ class WalletDetailScreen extends StatelessWidget {
             );
           },
         ),
+      ),
+    );
+  }
+}
+
+/// Tombol bulat bergaris oranye (ubah / hapus dompet).
+class _RoundAction extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  const _RoundAction({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: AppColors.primary, width: 1.5),
+        ),
+        child: Icon(icon, color: AppColors.primary, size: 24),
       ),
     );
   }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../utils/helpers.dart';
+
 import '../models/finance_models.dart';
 import '../services/finance_store.dart';
 import '../utils/app_colors.dart';
@@ -58,7 +60,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                 ),
                 Expanded(
                   child: ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 124),
+                    padding: EdgeInsets.fromLTRB(16, 10, 16, Helpers.navClearance(context)),
                     children: [
                       Row(
                         children: [

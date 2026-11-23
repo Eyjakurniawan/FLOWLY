@@ -6,7 +6,7 @@ import '../utils/app_colors.dart';
 import '../utils/constants.dart';
 import '../utils/helpers.dart';
 import '../utils/validators.dart';
-import '../widgets/app_text_field.dart';
+import '../widgets/app_text_field.dart'; // AppTextField + FieldError
 import '../widgets/auth_header.dart';
 import '../widgets/auth_switch_text.dart';
 import '../widgets/google_button.dart';
@@ -30,6 +30,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passCtrl = TextEditingController();
 
   bool _agree = false;
+  bool _agreeError = false; // "Centang persetujuan..." di bawah kotak centang
+  String? _passError; // pesan error kata sandi (ditampilkan di bawah petunjuk)
   bool _loading = false;
   bool _googleLoading = false;
 
@@ -42,15 +44,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _register() async {
     FocusScope.of(context).unfocus();
-    if (!_formKey.currentState!.validate()) return;
-    if (!_agree) {
-      Helpers.showSnack(
-        context,
-        'Setujui Syarat Layanan dan Kebijakan Privasi dulu ya.',
-        isError: true,
-      );
-      return;
-    }
+    // Validasi semua kolom + kotak centang sekaligus, supaya semua pesan
+    // error muncul bersamaan.
+    final formOk = _formKey.currentState!.validate();
+    setState(() => _agreeError = !_agree);
+    if (!formOk || !_agree) return;
 
     setState(() => _loading = true);
     final result = await AuthService.instance.signUp(
@@ -106,22 +104,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const AuthHeader(),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
                 const MascotBubble(
                   title: 'Halo, aku Floy!',
                   subtitle: 'Daftar dulu, nanti aku bantu atur semuanya.',
                   expression: MascotExpression.wink,
+                  authStyle: true,
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 14),
                 AppTextField(
                   label: 'Email',
-                  hint: 'nama@gmail.com',
+                  hint: 'nama@email.com',
                   controller: _emailCtrl,
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
                   validator: Validators.email,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 AppTextField(
                   label: 'Kata sandi',
                   hint: 'Minimal 8 karakter',
@@ -129,12 +128,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   isPassword: true,
                   validator: Validators.newPassword,
                   onChanged: (_) => setState(() {}),
+                  // Pesan error kata sandi ditaruh di bawah petunjuk (di
+                  // bawah ini), bukan langsung di bawah kolom.
+                  showError: false,
+                  onErrorChanged: (e) => setState(() => _passError = e),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 PasswordStrengthBar(password: _passCtrl.text),
-                const SizedBox(height: 20),
+                if (_passError != null) ...[
+                  const SizedBox(height: 4),
+                  FieldError(_passError!),
+                ],
+                const SizedBox(height: 16),
                 _buildAgreement(),
-                const SizedBox(height: 22),
+                if (_agreeError) ...[
+                  const SizedBox(height: 14),
+                  const FieldError('Centang persetujuan untuk melanjutkan.'),
+                  const SizedBox(height: 13),
+                ] else
+                  const SizedBox(height: 22),
                 PrimaryButton(
                   label: 'Buat akun',
                   loading: _loading,
@@ -168,19 +180,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
         SizedBox(
           width: 24,
           height: 24,
-          child: Checkbox(
-            value: _agree,
-            activeColor: AppColors.primary,
-            onChanged: (v) => setState(() => _agree = v ?? false),
+          child: Transform.scale(
+            scale: 1.25,
+            child: Checkbox(
+              value: _agree,
+              activeColor: AppColors.primary,
+              onChanged: (v) => setState(() {
+                _agree = v ?? false;
+                if (_agree) _agreeError = false;
+              }),
+            ),
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 11),
         Expanded(
           child: Text.rich(
             TextSpan(
-              style: const TextStyle(fontSize: 11, color: AppColors.textDark),
+              style: const TextStyle(fontSize: 12, color: AppColors.textDark),
               children: [
-                const TextSpan(text: 'Saya setuju dengan '),
+                const TextSpan(text: 'Aku setuju dengan '),
                 TextSpan(
                   text: 'Syarat Layanan',
                   style: bold,
@@ -205,4 +223,4 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ],
     );
   }  
-}           
+}

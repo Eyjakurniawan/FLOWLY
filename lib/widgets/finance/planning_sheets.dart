@@ -2,17 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../models/planning_models.dart';
+import '../../services/auth_service.dart';
+import '../../services/connectivity_service.dart';
 import '../../services/finance_store.dart';
 import '../../services/planning_store.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/formatters.dart';
 import '../../utils/helpers.dart';
+import '../delete_confirm_dialog.dart';
 import '../primary_button.dart';
 import 'common.dart';
 import 'flowly_date_picker.dart';
 
-Future<T?> _show<T>(BuildContext context, Widget sheet) =>
-    showFlowlySheet<T>(context, (_) => sheet);
+/// [offlineOk] true untuk sheet yang hanya melihat/menghitung (detail rencana
+/// dan kalkulator); form buat/ubah tidak dibuka saat offline.
+Future<T?> _show<T>(BuildContext context, Widget sheet,
+        {bool offlineOk = false}) =>
+    showFlowlySheet<T>(context, (_) => sheet, offlineOk: offlineOk);
 
 /// 1250000 -> "1.250.000" (tanpa "Rp", untuk mengisi kolom angka).
 String _plain(int v) => Fmt.rupiah(v).substring(2);
@@ -38,7 +44,7 @@ Future<DateTime?> _pickDepositDate(BuildContext context, DateTime current) {
   return showFlowlyDatePicker(
     context,
     initialDate: current,
-    firstDate: DateTime(2020),
+    firstDate: AuthService.signupDate,
     lastDate: DateTime(now.year, now.month, now.day),
   );
 }
@@ -51,8 +57,8 @@ DateTime _targetFirst() {
 
 DateTime _targetLast() => DateTime(DateTime.now().year + 30, 12, 31);
 
-/// Rentang tanggal setoran (2020 sampai hari ini).
-DateTime _depositFirst() => DateTime(2020);
+/// Rentang tanggal setoran (sejak user daftar sampai hari ini).
+DateTime _depositFirst() => AuthService.signupDate;
 
 DateTime _depositLast() {
   final n = DateTime.now();
@@ -140,7 +146,7 @@ class _DateField extends StatelessWidget {
         final ok = d != null && !d.isBefore(first) && !d.isAfter(last);
         onChanged(ok ? d : null);
       },
-      decoration: flowlyField('dd/mm/yyyy', error: _error).copyWith(
+      decoration: flowlyField('hh/bb/tttt', error: _error).copyWith(
         suffixIcon: IconButton(
           icon: const Icon(Icons.calendar_today_outlined, size: 20),
           tooltip: 'Pilih dari kalender',
@@ -330,7 +336,6 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
   final _budget = TextEditingController();
   final _saved = TextEditingController();
   final _dateText = TextEditingController();
-  final _alloc = TextEditingController();
 
   String _category = Planning.categories.first;
   PlanFrequency _freq = PlanFrequency.daily;
@@ -340,7 +345,6 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
 
   int get _budgetValue => Fmt.parseAmount(_budget.text);
   int get _savedValue => Fmt.parseAmount(_saved.text);
-  int get _allocValue => Fmt.parseAmount(_alloc.text);
 
   /// Dana yang sudah terkumpul (saat ubah: dari planning, bukan dari kolom).
   int get _alreadySaved => _isEdit ? widget.editing!.saved : _savedValue;
@@ -358,7 +362,6 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
       _name.text.trim().isNotEmpty &&
       _budgetValue > 0 &&
       _target != null &&
-      _allocValue > 0 &&
       (_isEdit ? !_budgetTooSmall : _savedValue < _budgetValue);
 
   /// Saran setoran per periode (hanya saran, nominal tetap diisi sendiri).
@@ -378,7 +381,6 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
       _freq = e.frequency;
       _target = e.target;
       _dateText.text = Fmt.slashDate(e.target);
-      _alloc.text = _plain(e.allocation);
     }
   }
 
@@ -388,7 +390,6 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
     _budget.dispose();
     _saved.dispose();
     _dateText.dispose();
-    _alloc.dispose();
     super.dispose();
   }
 
@@ -411,7 +412,7 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
         budget: _budgetValue,
         target: _target!,
         frequency: _freq,
-        allocation: _allocValue,
+        allocation: _suggestion ?? 0,
       );
     } else {
       store.add(
@@ -421,7 +422,7 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
         saved: _savedValue,
         target: _target!,
         frequency: _freq,
-        allocation: _allocValue,
+        allocation: _suggestion ?? 0,
       );
     }
     Navigator.pop(context, true);
@@ -432,24 +433,26 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
     final s = _suggestion;
     if (s == null) {
       return const Text(
-        'Isi budget dan target selesai untuk melihat saran setoran.',
+        'Isi rencana anggaran dan target selesai untuk melihat sisa target dan saran setoran.',
         style: grey,
       );
     }
     final n = _freq.periodsUntil(_target!);
+    final fin = FinanceStore.instance;
+    const bold =
+        TextStyle(fontWeight: FontWeight.w800, color: AppColors.textDark);
     return Text.rich(
       TextSpan(
         style: grey,
         children: [
-          const TextSpan(text: 'Saran: '),
+          const TextSpan(text: 'Sisa target '),
           TextSpan(
-            text: '${Fmt.rupiah(s)}/${_freq.unit}',
-            style: const TextStyle(
-                fontWeight: FontWeight.w800, color: AppColors.textDark),
-          ),
+              text: fin.money(_budgetValue - _alreadySaved), style: bold),
+          const TextSpan(text: ' • Saran setoran '),
+          TextSpan(text: '${fin.money(s)}/${_freq.unit}', style: bold),
           TextSpan(
               text:
-                  ' ($n ${_freq.unit} sampai target). Nominal tetap kamu isi sendiri.'),
+                  ' ($n ${_freq.unit} sampai target). Nominal setoran kamu isi sendiri saat menyetor.'),
         ],
       ),
     );
@@ -471,7 +474,7 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
             decoration: flowlyField('Contoh: Bali, Laptop, Motor'),
             onChanged: (_) => setState(() {}),
           ),
-          const FieldLabel('Rencana Anggaran (Rp)'),
+          const FieldLabel('Rencana anggaran (Rp)'),
           AmountField(
             controller: _budget,
             errorText: _budgetTooSmall
@@ -512,11 +515,6 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
           ),
           const SizedBox(height: 10),
           _hint(),
-          FieldLabel('Nominal setoran (Rp)'),
-          AmountField(
-            controller: _alloc,
-            onChanged: (_) => setState(() {}),
-          ),
           const SizedBox(height: 22),
           PrimaryButton(
             label: _isEdit ? 'Simpan perubahan' : 'Simpan rencana',
@@ -531,7 +529,7 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
 // ==================================================== Detail & setor dana
 
 Future<void> showPlanningDetailSheet(BuildContext context, int id) async {
-  final result = await _show<String>(context, _PlanningDetailSheet(id: id));
+  final result = await _show<String>(context, _PlanningDetailSheet(id: id), offlineOk: true);
   if (!context.mounted) return;
   if (result == 'delete') Helpers.showSnack(context, 'Rencana dihapus.');
 }
@@ -591,8 +589,6 @@ class _PlanningDetailSheetState extends State<_PlanningDetailSheet> {
   void initState() {
     super.initState();
     _dateText.text = Fmt.slashDate(_date);
-    final p = _store.byId(widget.id);
-    if (p != null) _applySuggestion(p);
   }
 
   @override
@@ -602,11 +598,6 @@ class _PlanningDetailSheetState extends State<_PlanningDetailSheet> {
     super.dispose();
   }
 
-  /// Isi kolom nominal dengan alokasi planning (maksimal sisa target).
-  void _applySuggestion(Planning p) {
-    final s = p.allocation > p.remaining ? p.remaining : p.allocation;
-    _amount.text = s > 0 ? _plain(s) : '';
-  }
 
   Future<void> _pickDate() async {
     final picked = await _pickDepositDate(context, _date);
@@ -619,69 +610,42 @@ class _PlanningDetailSheetState extends State<_PlanningDetailSheet> {
   }
 
   void _deposit(Planning p, int amount) {
+    if (!ConnectivityService.requireOnline(context)) return;
     _store.deposit(p.id, amount, date: _date);
-    final fresh = _store.byId(p.id);
     setState(() {
       _date = _today(); // kembali ke hari ini
       _dateText.text = Fmt.slashDate(_date);
-      if (fresh != null) _applySuggestion(fresh);
+      _amount.clear(); // kolom nominal dikosongkan lagi
     });
   }
 
   Future<void> _edit(Planning p) async {
     await _show<bool>(context, _PlanFormSheet(editing: p));
     if (!mounted) return;
-    final fresh = _store.byId(p.id);
-    if (fresh != null) setState(() => _applySuggestion(fresh));
+    setState(() {});
   }
 
   Future<void> _confirmDeletePlan(Planning p) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Hapus rencana ${p.name}?'),
-        content: const Text('Tindakan ini tidak bisa dibatalkan.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Hapus',
-                style: TextStyle(color: AppColors.primary)),
-          ),
-        ],
-      ),
+    final ok = await showDeleteConfirmDialog(
+      context,
+      title: 'Hapus rencana?',
+      message:
+          'Rencana "${p.name}" beserta riwayat setorannya akan dihapus dan tidak bisa dikembalikan.',
     );
-    if (ok != true || !mounted) return;
+    if (!ok || !mounted) return;
     _store.remove(p.id);
     Navigator.pop(context, 'delete');
   }
 
   Future<void> _confirmDeleteDeposit(Planning p, PlanDeposit d) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Hapus setoran ${Fmt.rupiah(d.amount)}?'),
-        content: const Text('Dana terkumpul akan berkurang sebesar nominal ini.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Hapus',
-                style: TextStyle(color: AppColors.primary)),
-          ),
-        ],
-      ),
+    final ok = await showDeleteConfirmDialog(
+      context,
+      title: 'Hapus setoran?',
+      message:
+          'Setoran ini akan dihapus dan total terkumpul rencana berkurang.',
     );
-    if (ok != true || !mounted) return;
+    if (!ok || !mounted) return;
     _store.removeDeposit(p.id, d.id);
-    final fresh = _store.byId(p.id);
-    if (fresh != null) setState(() => _applySuggestion(fresh));
   }
 
   /// Terbaru dulu (tanggal, lalu urutan dicatat). "Terkumpul awal" selalu di bawah.
@@ -780,7 +744,7 @@ class _PlanningDetailSheetState extends State<_PlanningDetailSheet> {
                   }),
                   first: _depositFirst(),
                   last: _depositLast(),
-                  rangeError: 'Tidak boleh lewat dari hari ini.',
+                  rangeError: 'Tanggal harus sejak kamu daftar sampai hari ini.',
                 ),
                 const _SmallLabel('Nominal setoran (Rp)'),
                 AmountField(
@@ -789,13 +753,13 @@ class _PlanningDetailSheetState extends State<_PlanningDetailSheet> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Sisa target ${fin.money(p.remaining)} • Saran setoran ${fin.money(p.allocation)}/${p.frequency.unit}',
+                  'Sisa target ${fin.money(p.remaining)} • Saran alokasi ${fin.money(p.suggestion)}/${p.frequency.unit}',
                   style: const TextStyle(
                       fontSize: 12, color: AppColors.textGrey),
                 ),
                 const SizedBox(height: 14),
                 PrimaryButton(
-                  label: payable > 0 ? 'Setor ${Fmt.rupiah(payable)}' : 'Setor',
+                  label: 'Setor',
                   onPressed: (payable > 0 && _dateValid)
                       ? () => _deposit(p, payable)
                       : null,
@@ -852,7 +816,7 @@ class _PlanningDetailSheetState extends State<_PlanningDetailSheet> {
 // ======================================================= Kalkulator tabungan
 
 Future<void> showSavingsCalculatorSheet(BuildContext context) =>
-    _show<void>(context, const _CalculatorSheet());
+    _show<void>(context, const _CalculatorSheet(), offlineOk: true);
 
 class _CalculatorSheet extends StatefulWidget {
   const _CalculatorSheet();
@@ -882,6 +846,54 @@ class _CalculatorSheetState extends State<_CalculatorSheet> {
       _target = picked;
       _dateText.text = Fmt.slashDate(picked);
     });
+  }
+
+  /// Satu kartu berisi setoran yang dibutuhkan per hari / minggu / bulan.
+  Widget _result(int remaining) {
+    final t = _target!;
+    final fin = FinanceStore.instance;
+    const line = Divider(height: 1, thickness: 1, color: Color(0xFFD3DDF5));
+    final dateLabel = '${t.day} ${Fmt.monthName(t.month)} ${t.year}';
+    final values = PlanFrequency.values;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE3EAFB),
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Setoran yang dibutuhkan sampai $dateLabel',
+              style: const TextStyle(fontSize: 11.5, color: AppColors.textGrey)),
+          const SizedBox(height: 8),
+          line,
+          for (var i = 0; i < values.length; i++) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${fin.money(values[i].allocationFor(remaining, t))}/${values[i].unit}',
+                    style: const TextStyle(
+                        fontSize: 19, fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${values[i].label} • ${values[i].periodsUntil(t)} ${values[i].unit}',
+                    style: const TextStyle(
+                        fontSize: 12, color: AppColors.textGrey),
+                  ),
+                ],
+              ),
+            ),
+            if (i < values.length - 1) line,
+          ],
+        ],
+      ),
+    );
   }
 
   @override
@@ -919,35 +931,9 @@ class _CalculatorSheetState extends State<_CalculatorSheet> {
           if (goal > 0 && _target != null && remaining <= 0)
             const Text('Target sudah tercapai.',
                 style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700))
-          else if (goal > 0 && _target != null) ...[
-            Text('Sisa yang perlu dikumpulkan: ${Fmt.rupiah(remaining)}',
-                style: const TextStyle(
-                    fontSize: 12.5, color: AppColors.textGrey)),
-            const SizedBox(height: 10),
-            for (final f in PlanFrequency.values)
-              Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE3EAFB),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  children: [
-                    Text(f.label,
-                        style: const TextStyle(
-                            fontSize: 13.5, fontWeight: FontWeight.w600)),
-                    const Spacer(),
-                    Text(
-                      '${Fmt.rupiah(f.allocationFor(remaining, _target!))}/${f.unit}',
-                      style: const TextStyle(
-                          fontSize: 14, fontWeight: FontWeight.w800),
-                    ),
-                  ],
-                ),
-              ),
-          ] else
+          else if (goal > 0 && _target != null)
+            _result(remaining)
+          else
             const Text(
               'Isi target dana dan tanggal selesai untuk melihat setoran yang dibutuhkan.',
               style: TextStyle(fontSize: 12.5, color: AppColors.textGrey),

@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 
+import '../utils/helpers.dart';
+
 import '../models/finance_models.dart';
 import '../services/finance_store.dart';
+import '../widgets/finance/budget_widgets.dart';
 import '../widgets/finance/cashflow_card.dart';
 import '../widgets/finance/category_treemap_card.dart';
 import '../widgets/finance/home_header.dart';
 import '../widgets/finance/summary_cards.dart';
 import '../widgets/finance/transaction_widgets.dart';
+import 'budget_screen.dart';
 import 'planning_screen.dart';
 import 'reports_screen.dart';
 import 'transactions_screen.dart';
@@ -49,7 +53,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 Expanded(
                   child: ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 124),
+                    padding: EdgeInsets.fromLTRB(16, 10, 16, Helpers.navClearance(context)),
                     children: [
                       BalanceCard(
                         onTap: widget.onOpenWallet,
@@ -66,6 +70,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       _gap,
                       if (!hasTx) ...[const EmptyLedgerCard(), _gap],
+                      BudgetCard(
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const BudgetScreen(),
+                          ),
+                        ),
+                      ),
+                      _gap,
                       PlanningCard(
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute(

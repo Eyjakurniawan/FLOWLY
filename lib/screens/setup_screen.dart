@@ -217,7 +217,7 @@ class _SetupScreenState extends State<SetupScreen> {
           const MascotBubble(
             title: 'Atur dasar dulu',
             subtitle:
-                'Siapa nama panggilanmu? Dompet bisa kamu tambahkan sendiri nanti di tab Wallet.',
+                'Siapa nama panggilanmu? Dompet bisa kamu tambahkan sendiri nanti di tab Dompet.',
             expression: MascotExpression.normal,
           ),
           const SizedBox(height: 20),

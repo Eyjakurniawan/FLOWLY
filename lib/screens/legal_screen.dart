@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../utils/helpers.dart';
+
 import '../utils/app_colors.dart';
 import '../widgets/finance/common.dart';
 import '../widgets/finance/home_header.dart';
@@ -36,7 +38,7 @@ const _terms = [
   ),
   _Section(
     'Kontak',
-    'Pertanyaan tentang ketentuan ini bisa dikirim lewat Bantuan & Dukungan.',
+    'Pertanyaan tentang ketentuan ini bisa dikirim lewat Bantuan dan Dukungan.',
   ),
 ];
 
@@ -63,7 +65,7 @@ const _privacy = [
   ),
   _Section(
     'Kontak',
-    'Pertanyaan privasi bisa dikirim lewat Bantuan & Dukungan.',
+    'Pertanyaan privasi bisa dikirim lewat Bantuan dan Dukungan.',
   ),
 ];
 
@@ -103,7 +105,7 @@ class _LegalPage extends StatelessWidget {
             ),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 124),
+                padding: EdgeInsets.fromLTRB(16, 10, 16, Helpers.navClearance(context)),
                 children: [
                   Row(
                     children: [

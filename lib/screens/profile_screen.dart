@@ -5,7 +5,9 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../services/auth_service.dart';
+import '../services/notification_store.dart';
 import '../services/profile_photo_service.dart';
+import '../utils/constants.dart';
 import '../services/setup_service.dart';
 import '../utils/app_colors.dart';
 import '../utils/helpers.dart';
@@ -49,6 +51,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (!mounted) return;
     if (saved == true) {
       setState(() {}); // baca ulang nama dari akun
+      NotificationStore.instance.push(
+        title: 'Profil diperbarui',
+        body: 'Perubahan profil kamu sudah disimpan.',
+        action: NotificationAction.openProfile,
+        mood: MascotExpression.wink,
+      );
       Helpers.showSnack(context, 'Profil diperbarui.');
     }
   }
@@ -87,7 +95,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 124),
+                padding: EdgeInsets.fromLTRB(16, 10, 16, Helpers.navClearance(context)),
                 children: [
                   _buildBubble(),
                   _gap,
@@ -223,7 +231,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const _MenuDivider(),
           _MenuItem(
-            title: 'Bantuan & Dukungan',
+            title: 'Bantuan dan Dukungan',
             subtitle: 'Pertanyaan umum dan kontak',
             onTap: () => _open(const HelpScreen()),
           ),
@@ -365,7 +373,7 @@ class _Avatar extends StatelessWidget {
   }
 }
 
-// ========================================================= sheet Profil Anda
+// ========================================================= sheet Profil kamu
 
 class _ProfileSheet extends StatefulWidget {
   final String initialName;
@@ -504,7 +512,7 @@ class _ProfileSheetState extends State<_ProfileSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Profil Anda',
+          const Text('Profil kamu',
               style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
           const SizedBox(height: 16),
           Center(
@@ -539,7 +547,7 @@ class _ProfileSheetState extends State<_ProfileSheet> {
             controller: _name,
             textCapitalization: TextCapitalization.words,
             inputFormatters: [LengthLimitingTextInputFormatter(20)],
-            decoration: flowlyField('Nama Anda', error: _error),
+            decoration: flowlyField('Nama kamu', error: _error),
             onChanged: (_) => setState(() => _error = null),
           ),
           const FieldLabel('Email'),
@@ -586,12 +594,12 @@ class _SignOutDialog extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
+            const SizedBox(
               width: 100,
               height: 96,
               child: Stack(
                 clipBehavior: Clip.none,
-                children: const [
+                children: [
                   Center(child: MascotView(size: 88)),
                   Positioned(
                     top: -2,

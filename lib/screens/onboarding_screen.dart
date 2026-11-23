@@ -43,7 +43,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     _OnboardingData(
       title: 'Kenalan dengan Floy',
       description:
-          'Teman kecil yang menjaga uang Anda tetap mengalir. Tinggi air di tangki menunjukkan sisa saldo Anda.',
+          'Teman kecil yang menjaga uang kamu tetap mengalir. Tinggi air di tangki menunjukkan sisa saldo kamu.',
       chipPosition: ChipPosition.bottomLeft,
       expression: MascotExpression.normal,
       chip: InfoChip(caption: 'Aman dipakai hari ini', value: 'Rp120.000'),
@@ -51,7 +51,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     _OnboardingData(
       title: 'Catat dalam 5 detik',
       description:
-          'Nominal, kategori, dompet. Floy bantu Anda selesai tanpa formulir panjang.',
+          'Nominal, kategori, dompet. Floy bantu kamu selesai tanpa formulir panjang.',
       chipPosition: ChipPosition.topLeft,
       expression: MascotExpression.wink,
       chip: InfoChip(
@@ -74,6 +74,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       ),
     ),
   ];
+
+  // Tinggi area judul + deskripsi (cukup untuk judul 2 baris + deskripsi 4 baris).
+  static const double _textAreaHeight = 180;
 
   bool get _isLast => _index == _pages.length - 1;
 
@@ -145,34 +148,48 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Kartu mengisi semua sisa ruang, sedangkan area teks
+                        // di bawahnya punya tinggi TETAP, sehingga ukuran
+                        // kartu biru sama di semua halaman walau panjang
+                        // judul/deskripsinya berbeda.
                         Expanded(
-                          flex: 6,
-                          child: OnboardingCard(
-                            chipPosition: p.chipPosition,
-                            chip: p.chip,
-                            showSparkles: p.sparkles,
-                            expression: p.expression,
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: OnboardingCard(
+                              chipPosition: p.chipPosition,
+                              chip: p.chip,
+                              showSparkles: p.sparkles,
+                              expression: p.expression,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 28),
-                        Text(
-                          p.title,
-                          style: const TextStyle(
-                            fontSize: 26,
-                            height: 1.2,
-                            fontWeight: FontWeight.w800,
+                        SizedBox(
+                          height: _textAreaHeight,
+                          width: double.infinity,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                p.title,
+                                style: const TextStyle(
+                                  fontSize: 26,
+                                  height: 1.2,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              Text(
+                                p.description,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  height: 1.5,
+                                  color: AppColors.textGrey,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 14),
-                        Text(
-                          p.description,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            height: 1.5,
-                            color: AppColors.textGrey,
-                          ),
-                        ),
-                        const Spacer(),
                       ],
                     );
                   },

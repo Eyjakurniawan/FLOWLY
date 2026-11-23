@@ -32,6 +32,9 @@ class AppColors {
   static const Color divider = Color(0xFFCBD3E6);
   static const Color strengthEmpty = Color(0xFFD3DAEC);
   static const Color weak = Color(0xFFE8472B);
+
+  // Pesan error form (teks + garis tepi kolom). Lebih gelap dari oranye tombol.
+  static const Color error = Color(0xFFC0341A);
   static const Color medium = Color(0xFFF59E0B);
   static const Color strong = Color(0xFF22C55E);
 }

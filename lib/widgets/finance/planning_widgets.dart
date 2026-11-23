@@ -65,6 +65,15 @@ class PlanningTotalCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final plans = PlanningStore.instance;
     final fin = FinanceStore.instance;
+    // Dengar store sendiri: kartu ini dipanggil dengan `const`, jadi tanpa
+    // ini angkanya tidak ikut berubah saat mode sembunyikan saldo diubah.
+    return ListenableBuilder(
+      listenable: Listenable.merge([plans, fin]),
+      builder: (context, _) => _buildCard(plans, fin),
+    );
+  }
+
+  Widget _buildCard(PlanningStore plans, FinanceStore fin) {
     return FlowlyCard(
       padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
       child: Column(
@@ -85,7 +94,7 @@ class PlanningTotalCard extends StatelessWidget {
           Text(
             plans.isEmpty
                 ? 'Belum ada rencana'
-                : '${plans.plans.length} rencana • ${plans.percent}% dari target ${fin.moneyCompact(plans.totalBudget)}',
+                : '${plans.activeCount} aktif • ${plans.doneCount} tercapai • ${plans.percent}% dari target ${fin.moneyCompact(plans.totalBudget)}',
             style: const TextStyle(fontSize: 12, color: AppColors.textGrey),
           ),
           const SizedBox(height: 12),
@@ -160,7 +169,7 @@ class PlanningEmptyState extends StatelessWidget {
               style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
           SizedBox(height: 6),
           Text(
-            'Wujudkan impianmu dengan menabung sedikit demi sedikit. Buat rencana pertamamu!',
+            'Mulai dari satu target kecil, misalnya dana darurat. Aku bantu pantau progresnya.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 12.5, color: AppColors.textGrey),
           ),
@@ -236,14 +245,14 @@ class PlanningItemCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Target $targetText • Alokasi ${fin.money(plan.allocation)}/$unit',
+            'Target $targetText • Alokasi ${fin.money(plan.suggestion)}/$unit',
             style: const TextStyle(fontSize: 12, color: AppColors.textGrey),
           ),
           const SizedBox(height: 4),
           Text(
             plan.isDone
                 ? 'Target tercapai!'
-                : 'Estimasi tercapai ${plan.periodsLeft} $unit lagi',
+                : 'Sisa ${plan.periodsLeft} $unit sampai target',
             style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
           ),
         ],

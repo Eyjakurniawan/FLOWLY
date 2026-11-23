@@ -28,19 +28,19 @@ class PasswordStrengthBar extends StatelessWidget {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 250),
                 height: 4,
-                margin: EdgeInsets.only(right: i == 3 ? 0 : 6),
+                margin: EdgeInsets.only(right: i == 3 ? 0 : 4),
                 decoration: BoxDecoration(
-                  color: filled ? color : AppColors.strengthEmpty,
+                  color: filled ? color : const Color(0xFFCCD4E2),
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
             );
           }),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 5),
         const Text(
-          'Minimal 8 karakter. Campur huruf besar, angka, dan simbol.',
-          style: TextStyle(fontSize: 10, color: AppColors.textGrey),
+          'Minimal 8 karakter. Campurkan huruf besar, angka, dan simbol.',
+          style: TextStyle(fontSize: 11, color: AppColors.textGrey),
         ),
       ],
     );

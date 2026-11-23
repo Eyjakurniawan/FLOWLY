@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../services/support_service.dart';
 import '../utils/app_colors.dart';
@@ -9,8 +9,6 @@ import '../widgets/finance/common.dart';
 import '../widgets/finance/home_header.dart';
 import '../widgets/mascot_view.dart';
 import '../widgets/primary_button.dart';
-
-const _supportEmail = 'support@flowly.app';
 
 class _Faq {
   final String question;
@@ -21,31 +19,51 @@ class _Faq {
 const _faqs = [
   _Faq(
     'Bagaimana cara mencatat transaksi?',
-    'Tekan tombol + di tengah menu bawah, isi nominal, pilih kategori dan dompet, lalu simpan.',
+    'Tekan tombol + di menu bawah, isi nominal (maksimal Rp999.999.999.999), pilih kategori dan dompet, lalu simpan. Tanggal bisa dipilih dari hari akunmu dibuat sampai hari ini.',
   ),
   _Faq(
-    'Bagaimana menambah dompet atau dompet digital?',
-    'Buka tab Dompet lalu tekan "+ Tambah dompet", atau langsung dari form catat transaksi.',
+    'Bagaimana mengubah atau menghapus transaksi?',
+    'Ketuk transaksinya di Transaksi, Laporan, atau detail dompet, lalu pilih Ubah atau Hapus. Saldo dompet ikut menyesuaikan.',
+  ),
+  _Faq(
+    'Kenapa transaksiku ditolak?',
+    'Pengeluaran tidak bisa melebihi saldo dompet. Ubah atau hapus juga ditolak jika membuat saldo dompet minus. Kecilkan nominal, pilih dompet lain, atau catat pemasukan dulu.',
+  ),
+  _Faq(
+    'Kenapa saldo dompet tidak bisa diedit?',
+    'Saldo awal hanya bisa diisi satu kali. Setelah itu saldo dihitung otomatis dari transaksi. Untuk koreksi, catat transaksi pemasukan atau pengeluaran.',
+  ),
+  _Faq(
+    'Apa yang terjadi jika dompet dihapus?',
+    'Dompet yang dihapus tidak bisa dikembalikan dan saldonya tidak lagi dihitung di total saldo. Riwayat transaksinya tetap bisa dilihat di Laporan.',
   ),
   _Faq(
     'Bagaimana membuat rencana?',
-    'Buka Rencana dari beranda atau menu Profil, tekan "+ Buat rencana", lalu isi nama, rencana anggaran, kategori, target selesai, dan pilih saran alokasi harian, mingguan, atau bulanan. Nominal setoran kamu isi sendiri.',
+    'Buka Rencana, tekan "+ Buat rencana", lalu isi nama, anggaran, kategori, dan target selesai (mulai besok). Pilih saran alokasi harian, mingguan, atau bulanan untuk melihat saran target dan saran setoran.',
+  ),
+  _Faq(
+    'Bagaimana cara kerja anggaran?',
+    'Buka Profil lalu Anggaran (atau ketuk kartu Anggaran di Beranda), tekan "+ Buat anggaran", pilih kategori dan isi batas per bulan. Pengeluaran di kategori itu dihitung otomatis dan direset tiap awal bulan. Batasnya lunak: pengeluaran yang melewati batas tetap bisa dicatat, tapi kamu diingatkan. "Aman dipakai per hari" adalah sisa anggaran dibagi sisa hari di bulan ini. Riwayat tiap bulan bisa dilihat dengan memilih bulan di halaman Anggaran. Perubahan batas berlaku mulai bulan ini, bulan lalu tetap memakai batas lamanya. Anggaran membatasi pengeluaran, sedangkan Rencana mengumpulkan tabungan.',
   ),
   _Faq(
     'Bagaimana mencatat setoran rencana?',
-    'Ketuk rencana, atur tanggal (boleh hari sebelumnya), isi nominal, lalu Setor. Semua setoran tercatat di Riwayat setoran.',
+    'Ketuk rencana, pilih tanggal, isi nominal setoran sendiri, lalu tekan Setor. Nominal tidak boleh melebihi sisa target.',
   ),
   _Faq(
-    'Bagaimana cara kerja kalkulator tabungan?',
-    'Masukkan target dana dan tanggal selesai (dana yang sudah terkumpul boleh diisi). Kalkulator langsung menampilkan setoran yang dibutuhkan per hari, minggu, atau bulan.',
+    'Apa bedanya rencana aktif dan tercapai?',
+    'Rencana aktif belum terkumpul penuh. Begitu penuh, statusnya tercapai dan tidak lagi dihitung aktif.',
   ),
   _Faq(
-    'Bagaimana mengubah jam pengingat?',
-    'Buka Notifikasi, ketuk Pengingat catat harian, lalu pilih jam yang kamu inginkan.',
+    'Kenapa kategori tidak bisa dihapus?',
+    'Kategori yang masih dipakai transaksi tidak bisa dihapus. Ubah atau hapus transaksinya dulu.',
   ),
   _Faq(
-    'Bagaimana mengubah atau menghapus kategori?',
-    'Buka Profil, Pengaturan, lalu Kelola kategori dan dompet. Kamu bisa mengubah nama dan warna kategori, atau menghapusnya. Kategori yang masih dipakai transaksi tidak bisa dihapus.',
+    'Bagaimana mengubah ukuran huruf?',
+    'Buka Profil, Pengaturan, lalu geser pengatur Ukuran huruf dari A kecil ke A besar (85% sampai 105%). Ukuran diterapkan saat geseran dilepas dan tersimpan di perangkat ini. Tekan Atur ulang untuk kembali ke 100%.',
+  ),
+  _Faq(
+    'Bagaimana menghapus akun?',
+    'Buka Profil, Pengaturan, lalu Hapus akun dan ketik HAPUS. Semua data dihapus permanen dan tidak bisa dikembalikan.',
   ),
 ];
 
@@ -64,12 +82,6 @@ class _HelpScreenState extends State<HelpScreen> {
     setState(() {
       if (!_open.add(i)) _open.remove(i);
     });
-  }
-
-  Future<void> _copyEmail() async {
-    await Clipboard.setData(const ClipboardData(text: _supportEmail));
-    if (!mounted) return;
-    Helpers.showSnack(context, 'Alamat email disalin.');
   }
 
   Future<void> _openReport() async {
@@ -95,7 +107,7 @@ class _HelpScreenState extends State<HelpScreen> {
             ),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 124),
+                padding: EdgeInsets.fromLTRB(16, 10, 16, Helpers.navClearance(context)),
                 children: [
                   Row(
                     children: [
@@ -114,7 +126,7 @@ class _HelpScreenState extends State<HelpScreen> {
                       ),
                       const SizedBox(width: 12),
                       const Expanded(
-                        child: Text('Bantuan & Dukungan',
+                        child: Text('Bantuan dan Dukungan',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -123,13 +135,13 @@ class _HelpScreenState extends State<HelpScreen> {
                     ],
                   ),
                   const SizedBox(height: 14),
-                  FlowlyCard(
-                    padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+                  const FlowlyCard(
+                    padding: EdgeInsets.fromLTRB(18, 16, 18, 16),
                     child: Row(
                       children: [
-                        const MascotView(size: 84),
-                        const SizedBox(width: 18),
-                        const Expanded(
+                        MascotView(size: 84),
+                        SizedBox(width: 18),
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -179,15 +191,10 @@ class _HelpScreenState extends State<HelpScreen> {
                             style: TextStyle(
                                 fontSize: 18, fontWeight: FontWeight.w800)),
                         const SizedBox(height: 2),
-                        const Text('Tim kami siap membantu di hari kerja.',
+                        const Text('Ceritakan kendalamu, laporanmu langsung diterima tim Flowly.',
                             style: TextStyle(
                                 fontSize: 12.5, color: AppColors.textGrey)),
                         const SizedBox(height: 14),
-                        _OutlineAction(
-                          label: 'Email $_supportEmail',
-                          onTap: _copyEmail,
-                        ),
-                        const SizedBox(height: 10),
                         _OutlineAction(
                           label: 'Laporkan masalah',
                           onTap: _openReport,

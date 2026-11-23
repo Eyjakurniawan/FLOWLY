@@ -5,12 +5,16 @@ import 'package:flutter/material.dart';
 import '../../models/finance_models.dart';
 import '../../services/finance_store.dart';
 
-/// Tinggi air tangki saldo, 0..1.
+/// Tinggi air minimum. Saldo kosong pun tangki tidak kosong melompong:
+/// masih ada sedikit air (sekitar 14% tinggi kartu) yang bergelombang.
+const double tankMinLevel = 0.14;
+
+/// Tinggi air tangki saldo, [tankMinLevel]..1.
 ///
 /// = sisa uang dibanding seluruh uang yang pernah masuk (saldo awal semua
 /// dompet + semua pemasukan). Pemasukan menaikkan air, pengeluaran
-/// menurunkannya. Kalau belum ada uang sama sekali, tangki kosong.
-/// Selama saldo > 0 airnya tetap kelihatan (minimal 8%).
+/// menurunkannya. Kalau saldo kosong (atau belum ada dompet/uang sama
+/// sekali), air tetap setinggi [tankMinLevel].
 double tankLevel(FinanceStore store) {
   var funded = 0;
   var balance = 0;
@@ -21,8 +25,8 @@ double tankLevel(FinanceStore store) {
       if (t.type == TxType.income) funded += t.amount;
     }
   }
-  if (funded <= 0 || balance <= 0) return 0;
-  return (balance / funded).clamp(0.08, 1.0).toDouble();
+  if (funded <= 0 || balance <= 0) return tankMinLevel;
+  return (balance / funded).clamp(tankMinLevel, 1.0).toDouble();
 }
 
 /// Lapisan air bergelombang. Taruh di belakang isi kartu (Positioned.fill);

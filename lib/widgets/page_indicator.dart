@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
-/// Titik indikator onboarding; halaman aktif berupa pil putih memanjang.
+import '../utils/app_colors.dart';
+
+/// Titik indikator onboarding; halaman aktif berupa pil navy memanjang.
 class PageIndicator extends StatelessWidget {
   final int count;
   final int index;
@@ -19,7 +21,8 @@ class PageIndicator extends StatelessWidget {
           height: 8,
           margin: const EdgeInsets.symmetric(horizontal: 3),
           decoration: BoxDecoration(
-            color: active ? Colors.white : const Color(0xFF6B7280),
+            // Aktif: navy gelap. Tidak aktif: abu kebiruan terang.
+            color: active ? AppColors.navyBottom : const Color(0xFFBBC2D3),
             borderRadius: BorderRadius.circular(8),
           ),
         );

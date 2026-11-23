@@ -2,8 +2,10 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../services/connectivity_service.dart';
 import '../../services/supabase_service.dart';
 import '../../utils/app_colors.dart';
+import '../../utils/helpers.dart';
 import 'number_pad.dart';
 
 /// Kartu putih berujung bulat yang dipakai di semua section.
@@ -205,7 +207,14 @@ const double kSheetMaxHeightFactor = 0.8;
 /// Satu-satunya cara membuka pop-up bawah (selain Catat transaksi),
 /// supaya tampilannya seragam: tidak menutup seluruh layar, bisa digulir,
 /// dan naik mengikuti keyboard saat mengetik.
-Future<T?> showFlowlySheet<T>(BuildContext context, WidgetBuilder builder) {
+///
+/// Saat offline, sheet tidak dibuka (hasilnya null) dan muncul pesan,
+/// kecuali [offlineOk] true (sheet yang hanya menampilkan/menghitung).
+Future<T?> showFlowlySheet<T>(BuildContext context, WidgetBuilder builder,
+    {bool offlineOk = false}) {
+  if (!offlineOk && !ConnectivityService.requireOnline(context)) {
+    return Future<T?>.value(null);
+  }
   return showModalBottomSheet<T>(
     context: context,
     isScrollControlled: true,
@@ -227,15 +236,26 @@ class _SheetCap extends StatelessWidget {
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
     final kb = mq.viewInsets.bottom;
+    // useSafeArea tidak menyisakan ruang di bawah, jadi isi sheet (mis.
+    // tombol "Simpan") bisa tertutup tombol navigasi HP. Beri jarak setinggi
+    // area sistem + sedikit napas. Saat keyboard terbuka, keyboard-lah yang
+    // jadi batas bawahnya.
+    final system = Helpers.systemBottom(context);
+    final bottom = kb > 0 ? kb : system + 12;
     return LayoutBuilder(builder: (context, c) {
       final cap = math.min(mq.size.height * kSheetMaxHeightFactor,
-          math.max(0.0, c.maxHeight - kb));
+          math.max(0.0, c.maxHeight - bottom));
       return Padding(
-        // Keyboard mendorong sheet naik, tinggi isi tetap terjaga.
-        padding: EdgeInsets.only(bottom: kb),
+        padding: EdgeInsets.only(bottom: bottom),
         child: ConstrainedBox(
           constraints: BoxConstraints(maxHeight: cap),
-          child: child,
+          // Jarak bawah sudah diberikan di sini; cegah SafeArea di dalam
+          // sheet menambahnya lagi.
+          child: MediaQuery.removePadding(
+            context: context,
+            removeBottom: true,
+            child: child,
+          ),
         ),
       );
     });
@@ -248,6 +268,7 @@ Future<DateTime?> showMonthPickerSheet(
   return showFlowlySheet<DateTime>(
     context,
     (ctx) => _MonthPickerSheet(selected: selected),
+    offlineOk: true,
   );
 }
 
@@ -508,7 +529,12 @@ class _SheetFrameState extends State<SheetFrame> {
   void _press(String key) {
     final a = _active;
     if (a == null) return;
-    if (applyPadKey(a.controller, key)) a.onChanged?.call(a.controller.text);
+    if (applyPadKey(a.controller, key)) {
+      a.onChanged?.call(a.controller.text);
+    } else if (padKeyExceedsMax(a.controller, key)) {
+      Helpers.showTopAlert(context, 'Maksimal Rp$kMaxAmountText',
+          duration: const Duration(seconds: 2));
+    }
   }
 
   void _clear() {

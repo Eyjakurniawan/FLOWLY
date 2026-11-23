@@ -7,6 +7,7 @@ import '../services/finance_store.dart';
 import '../utils/app_colors.dart';
 import '../utils/constants.dart';
 import '../utils/helpers.dart';
+import '../widgets/dashed_box.dart';
 import '../widgets/finance/add_wallet_sheet.dart';
 import '../widgets/finance/common.dart';
 import '../widgets/finance/home_header.dart';
@@ -84,7 +85,7 @@ class WalletTab extends StatelessWidget {
               ),
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 124),
+                  padding: EdgeInsets.fromLTRB(16, 10, 16, Helpers.navClearance(context)),
                   children: [
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
@@ -142,13 +143,7 @@ class WalletTab extends StatelessWidget {
                     ),
                     const SizedBox(height: 14),
                     if (views.isEmpty)
-                      const FlowlyCard(
-                        child: Text(
-                          'Tambahkan dompet pertama (bank, e-wallet, atau tunai) dan isi saldo awalnya, lalu catat transaksi dari sana.',
-                          style: TextStyle(
-                              fontSize: 13, color: AppColors.textGrey),
-                        ),
-                      )
+                      const _EmptyWallets()
                     else ...[
                       FlowlyCard(
                         padding: const EdgeInsets.symmetric(
@@ -191,6 +186,72 @@ class WalletTab extends StatelessWidget {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+/// Tampilan saat belum ada dompet: kotak putus-putus dengan maskot.
+class _EmptyWallets extends StatelessWidget {
+  const _EmptyWallets();
+
+  @override
+  Widget build(BuildContext context) {
+    return FlowlyCard(
+      padding: const EdgeInsets.all(14),
+      child: DashedBox(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 120,
+                height: 120,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    const MascotView(size: 120),
+                    Positioned(
+                      bottom: 4,
+                      child: Container(
+                        width: 22,
+                        height: 22,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF59E0B),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                              color: const Color(0xFFD97706), width: 1.5),
+                        ),
+                        child: const Text(
+                          'Rp',
+                          style: TextStyle(
+                            fontSize: 8,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Belum ada dompet',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Tambahkan dompet pertama (bank, dompet digital, atau tunai) dan isi saldo awalnya, lalu catat transaksi dari sana.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontSize: 12.5, height: 1.4, color: AppColors.textGrey),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

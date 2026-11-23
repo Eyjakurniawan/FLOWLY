@@ -2,7 +2,8 @@
 enum MascotExpression {
   normal('maskot_normal.png'),
   wink('maskot_wink.png'),
-  happy('maskot_happy.png');
+  happy('maskot_happy.png'),
+  flag('maskot_bendera.png');
 
   final String file;
   const MascotExpression(this.file);
@@ -22,4 +23,4 @@ class AppConstants {
 
   static const String appName = 'Flowly';
   static const String tagline = 'Atur uang, ikuti alurnya.';
-}   
+}

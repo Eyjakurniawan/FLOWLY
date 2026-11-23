@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../utils/helpers.dart';
+
+import '../services/connectivity_service.dart';
+
 import '../models/finance_models.dart';
 import '../services/category_store.dart';
 import '../services/finance_store.dart';
@@ -46,7 +50,7 @@ class CategoryWalletScreen extends StatelessWidget {
                   final wallets = fin.wallets;
 
                   return ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 124),
+                    padding: EdgeInsets.fromLTRB(16, 10, 16, Helpers.navClearance(context)),
                     children: [
                       Row(
                         children: [
@@ -138,10 +142,7 @@ class CategoryWalletScreen extends StatelessWidget {
                               title: wallets[i].name,
                               subtitle:
                                   '${wallets[i].type.label} • ${fin.money(fin.balanceOf(wallets[i]))}',
-                              onTap: () => showFlowlySheet<bool>(
-                                context,
-                                (_) => _WalletSheet(wallet: wallets[i]),
-                              ),
+                              onTap: () => showEditWalletSheet(context, wallets[i]),
                             ),
                           ],
                         ],
@@ -301,6 +302,7 @@ Future<bool> _confirmDelete(
   required String title,
   required String message,
 }) async {
+  if (!ConnectivityService.requireOnline(context)) return false;
   final ok = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
@@ -414,7 +416,10 @@ class _CategorySheetState extends State<_CategorySheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(_isEdit ? 'Ubah kategori' : 'Tambah kategori',
+          Text(
+              _locked
+                  ? 'Ubah warna kategori'
+                  : (_isEdit ? 'Ubah kategori' : 'Tambah kategori'),
               style:
                   const TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
           const SizedBox(height: 2),
@@ -428,12 +433,16 @@ class _CategorySheetState extends State<_CategorySheet> {
             decoration: flowlyField('Contoh: Kopi, Hadiah', error: _error),
             onChanged: (_) => setState(() => _error = null),
           ),
+          if (_locked)
+            const Padding(
+              padding: EdgeInsets.only(top: 6),
+              child: Text(
+                'Kategori bawaan: nama tidak bisa diubah dan tidak bisa dihapus. Warnanya boleh kamu ganti.',
+                style: TextStyle(fontSize: 11.5, color: AppColors.textGrey),
+              ),
+            ),
           const FieldLabel('Warna'),
-          IgnorePointer(
-            ignoring: _locked,
-            child: Opacity(
-              opacity: _locked ? 0.4 : 1,
-              child: Wrap(
+          Wrap(
             spacing: 10,
             runSpacing: 10,
             children: [
@@ -454,8 +463,6 @@ class _CategorySheetState extends State<_CategorySheet> {
                   ),
                 ),
             ],
-          ),
-            ),
           ),
           const SizedBox(height: 22),
           PrimaryButton(
@@ -484,6 +491,24 @@ class _CategorySheetState extends State<_CategorySheet> {
 
 // ===================================================== Sheet ubah dompet
 
+/// Hasil sheet ubah dompet: [deleted] true kalau dompet dihapus, selain itu
+/// [name] adalah nama dompet setelah disimpan.
+class WalletEditResult {
+  final bool deleted;
+  final String name;
+  const WalletEditResult({required this.deleted, required this.name});
+}
+
+/// Buka sheet ubah dompet. Null kalau ditutup tanpa menyimpan.
+/// Nama dan jenis dompet bisa diubah; saldo tidak (mengikuti transaksi).
+Future<WalletEditResult?> showEditWalletSheet(
+    BuildContext context, Wallet wallet) {
+  return showFlowlySheet<WalletEditResult>(
+    context,
+    (_) => _WalletSheet(wallet: wallet),
+  );
+}
+
 class _WalletSheet extends StatefulWidget {
   final Wallet wallet;
   const _WalletSheet({required this.wallet});
@@ -494,51 +519,36 @@ class _WalletSheet extends StatefulWidget {
 
 class _WalletSheetState extends State<_WalletSheet> {
   late final TextEditingController _name;
-  late final TextEditingController _balance;
   late WalletType _type;
   String? _error;
-  String? _balanceError; // saldo awal bikin saldo dompet minus
 
   @override
   void initState() {
     super.initState();
-    final w = widget.wallet;
-    _name = TextEditingController(text: w.name);
-    _balance = TextEditingController(
-      text: w.initialBalance > 0 ? Fmt.rupiah(w.initialBalance).substring(2) : '',
-    );
-    _type = w.type;
+    _name = TextEditingController(text: widget.wallet.name);
+    _type = widget.wallet.type;
   }
 
   @override
   void dispose() {
     _name.dispose();
-    _balance.dispose();
     super.dispose();
   }
 
   void _save() {
-    final store = FinanceStore.instance;
-    final newInitial = Fmt.parseAmount(_balance.text);
-    // Saldo dompet = saldo awal + semua transaksinya; tidak boleh minus.
-    final fromTx = store.balanceOf(widget.wallet) - widget.wallet.initialBalance;
-    if (newInitial + fromTx < 0) {
-      setState(() => _balanceError =
-          'Saldo awal terlalu kecil: saldo dompet akan minus. '
-          'Minimal ${Fmt.rupiah(-fromTx)}.');
-      return;
-    }
-    final ok = store.updateWallet(
+    final newName = _name.text.trim();
+    // Saldo awal tidak berubah: saldo dompet hanya mengikuti transaksi.
+    final ok = FinanceStore.instance.updateWallet(
       widget.wallet.name,
-      _name.text,
+      newName,
       _type,
-      newInitial,
+      widget.wallet.initialBalance,
     );
     if (!ok) {
       setState(() => _error = 'Nama dompet itu sudah ada.');
       return;
     }
-    Navigator.pop(context, true);
+    Navigator.pop(context, WalletEditResult(deleted: false, name: newName));
   }
 
   Future<void> _delete() async {
@@ -549,11 +559,19 @@ class _WalletSheetState extends State<_WalletSheet> {
     );
     if (!ok || !mounted) return;
     FinanceStore.instance.removeWallet(widget.wallet.name);
-    Navigator.pop(context, true);
+    Navigator.pop(
+        context, WalletEditResult(deleted: true, name: widget.wallet.name));
   }
 
   @override
   Widget build(BuildContext context) {
+    final store = FinanceStore.instance;
+    final balance = store.balanceOf(widget.wallet);
+    final shownBalance =
+        store.hideAmounts ? '*****' : Fmt.rupiah(balance).substring(2);
+    const note = TextStyle(
+        fontSize: 11.5, height: 1.4, color: AppColors.textGrey);
+
     return SheetFrame(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -580,13 +598,33 @@ class _WalletSheetState extends State<_WalletSheet> {
                 ),
             ],
           ),
-          const FieldLabel('Saldo awal (Rp)'),
-          AmountField(
-            controller: _balance,
-            errorText: _balanceError,
-            onChanged: (_) => setState(() => _balanceError = null),
+          const FieldLabel('Saldo dompet (Rp)'),
+          // Saldo tidak bisa diubah langsung: tampil abu-abu dan terkunci.
+          TextFormField(
+            initialValue: shownBalance,
+            enabled: false,
+            style: const TextStyle(fontSize: 14, color: AppColors.textGrey),
+            decoration: flowlyField('').copyWith(
+              fillColor: const Color(0xFFE4E6EC),
+              disabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+            ),
           ),
-          const SizedBox(height: 22),
+          const Padding(
+            padding: EdgeInsets.only(top: 10),
+            child: Text('Saldo mengikuti transaksi yang kamu catat.',
+                style: note),
+          ),
+          const Padding(
+            padding: EdgeInsets.only(top: 4),
+            child: Text(
+              'Saldo dihitung otomatis dari transaksi, jadi tidak bisa diubah langsung. Untuk koreksi, catat transaksi pemasukan atau pengeluaran.',
+              style: note,
+            ),
+          ),
+          const SizedBox(height: 14),
           PrimaryButton(
             label: 'Simpan perubahan',
             onPressed: _name.text.trim().isNotEmpty ? _save : null,

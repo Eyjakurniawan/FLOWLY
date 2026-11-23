@@ -106,7 +106,7 @@ class BalanceCard extends StatelessWidget {
                                 if (!store.hasWallets) ...[
                                   const SizedBox(height: 8),
                                   const Text(
-                                    'Belum ada dompet. Tambahkan di tab Wallet.',
+                                    'Belum ada dompet. Tambahkan di tab Dompet.',
                                     style: TextStyle(
                                         color: Colors.white70, fontSize: 12),
                                   ),
@@ -275,8 +275,10 @@ class PlanningCard extends StatelessWidget {
                 ? '${plans.activeCount} rencana aktif'
                 : 'Semua rencana tercapai');
         final subtitle = empty
-            ? 'Buat target tabungan pertama Anda'
-            : '${fin.money(plans.totalSaved)} terkumpul dari ${fin.money(plans.totalBudget)}';
+            ? 'Buat target tabungan pertama kamu'
+            : (plans.activeCount > 0
+                ? '${fin.money(plans.activeSaved)} terkumpul dari ${fin.money(plans.activeBudget)}'
+                : '${fin.money(plans.totalSaved)} terkumpul dari ${fin.money(plans.totalBudget)}');
 
         return FlowlyCard(
           onTap: onTap,
@@ -304,7 +306,11 @@ class PlanningCard extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: LinearProgressIndicator(
-                  value: empty ? 0 : plans.progress,
+                  value: empty
+                      ? 0
+                      : (plans.activeCount > 0
+                          ? plans.activeProgress
+                          : plans.progress),
                   minHeight: 8,
                   backgroundColor: const Color(0xFFE3EAFB),
                   color: AppColors.link,

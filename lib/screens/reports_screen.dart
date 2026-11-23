@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../utils/helpers.dart';
+
 import '../models/finance_models.dart';
 import '../services/finance_store.dart';
 import '../utils/app_colors.dart';
@@ -148,7 +150,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 Expanded(
                   child: ListView(
                     controller: _scroll,
-                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 124),
+                    padding: EdgeInsets.fromLTRB(16, 10, 16, Helpers.navClearance(context)),
                     children: [
                       _buildBubble(),
                       _gap,
@@ -305,9 +307,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           const SizedBox(height: 14),
           if (slices.isEmpty)
             Text(
-              s.monthTransactions.isEmpty
-                  ? 'Belum ada transaksi pada $month.'
-                  : 'Belum ada pengeluaran pada $month.',
+              'Belum ada pengeluaran di $month.',
               style: const TextStyle(fontSize: 12.5, color: AppColors.textGrey),
             )
           else

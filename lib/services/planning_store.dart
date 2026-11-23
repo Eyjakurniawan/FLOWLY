@@ -1,7 +1,10 @@
 import 'package:flutter/foundation.dart';
 
 import '../models/planning_models.dart';
+import '../utils/constants.dart';
+import '../utils/formatters.dart';
 import 'app_data.dart';
+import 'notification_store.dart';
 
 /// Sumber data rencana, tersimpan di Supabase (tabel `planning` dan
 /// `planning_deposits`). Tampilan diperbarui langsung, lalu disimpan ke
@@ -22,6 +25,25 @@ class PlanningStore extends ChangeNotifier {
   bool get isEmpty => _plans.isEmpty;
 
   int get activeCount => _plans.where((p) => !p.isDone).length;
+  int get doneCount => _plans.where((p) => p.isDone).length;
+  /// Rencana yang belum selesai lebih dulu, yang sudah 100% di paling bawah
+  /// (urutan di dalam tiap kelompok tetap).
+  List<Planning> get sortedPlans => [
+        ..._plans.where((p) => !p.isDone),
+        ..._plans.where((p) => p.isDone),
+      ];
+
+  /// Ringkasan hanya dari rencana yang belum selesai (dipakai di Beranda).
+  int get activeSaved =>
+      _plans.where((p) => !p.isDone).fold<int>(0, (s, p) => s + p.saved);
+  int get activeBudget =>
+      _plans.where((p) => !p.isDone).fold<int>(0, (s, p) => s + p.budget);
+  double get activeProgress {
+    if (activeBudget <= 0) return 0;
+    final v = activeSaved / activeBudget;
+    return v > 1 ? 1.0 : v;
+  }
+
   int get totalSaved => _plans.fold<int>(0, (s, p) => s + p.saved);
   int get totalBudget => _plans.fold<int>(0, (s, p) => s + p.budget);
 
@@ -182,6 +204,13 @@ class PlanningStore extends ChangeNotifier {
           : const [],
     ));
 
+    NotificationStore.instance.push(
+      title: 'Rencana dibuat',
+      body: 'Rencana "$n" dengan target ${Fmt.rupiah(budget)} berhasil dibuat.',
+      action: NotificationAction.openPlanning,
+      mood: MascotExpression.happy,
+    );
+
     final planFut = AppData.guard<String>(() async {
       final row = await AppData.db
           .from('planning')
@@ -231,6 +260,12 @@ class PlanningStore extends ChangeNotifier {
     if (i < 0) return;
     final p = _plans[i];
     final n = name.trim();
+    NotificationStore.instance.push(
+      title: 'Rencana diperbarui',
+      body: 'Rencana "$n" berhasil diubah.',
+      action: NotificationAction.openPlanning,
+      mood: MascotExpression.wink,
+    );
     _plans[i] = p.copyWith(
       name: n,
       category: category,
@@ -239,6 +274,15 @@ class PlanningStore extends ChangeNotifier {
       frequency: frequency,
       allocation: allocation,
     );
+    if (!p.isDone && _plans[i].isDone) {
+      NotificationStore.instance.push(
+        title: 'Target tercapai',
+        body: 'Selamat! Rencana "$n" sudah mencapai target '
+            '${Fmt.rupiah(budget)}.',
+        action: NotificationAction.openPlanning,
+        mood: MascotExpression.happy,
+      );
+    }
     _planIds[id]?.then((rid) async {
       if (rid == null) return;
       await AppData.run(
@@ -281,6 +325,15 @@ class PlanningStore extends ChangeNotifier {
       });
     }
     _pushCollected(id);
+    if (_plans[i].isDone) {
+      NotificationStore.instance.push(
+        title: 'Target tercapai',
+        body: 'Selamat! Rencana "${p.name}" sudah mencapai target '
+            '${Fmt.rupiah(p.budget)}.',
+        action: NotificationAction.openPlanning,
+        mood: MascotExpression.happy,
+      );
+    }
     notifyListeners();
   }
 
@@ -304,6 +357,14 @@ class PlanningStore extends ChangeNotifier {
   }
 
   void remove(int id) {
+    final gone = byId(id);
+    if (gone != null) {
+      NotificationStore.instance.push(
+        title: 'Rencana dihapus',
+        body: 'Rencana "${gone.name}" beserta riwayat setorannya sudah dihapus.',
+        action: NotificationAction.openPlanning,
+      );
+    }
     _plans.removeWhere((p) => p.id == id);
     _planIds.remove(id)?.then((rid) async {
       if (rid == null) return;

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../utils/helpers.dart';
+
 import '../services/finance_store.dart';
 import '../services/planning_store.dart';
 import '../widgets/finance/home_header.dart';
@@ -28,7 +30,7 @@ class PlanningScreen extends StatelessWidget {
                 ),
                 Expanded(
                   child: ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 124),
+                    padding: EdgeInsets.fromLTRB(16, 10, 16, Helpers.navClearance(context)),
                     children: [
                       Row(
                         children: [
@@ -80,7 +82,7 @@ class PlanningScreen extends StatelessWidget {
                       if (plans.isEmpty)
                         const PlanningEmptyState()
                       else
-                        for (final p in plans.plans) ...[
+                        for (final p in plans.sortedPlans) ...[
                           PlanningItemCard(
                             plan: p,
                             onTap: () => showPlanningDetailSheet(context, p.id),

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../utils/helpers.dart';
+
 import '../services/notification_store.dart';
 import '../utils/app_colors.dart';
 import '../utils/formatters.dart';
+import '../utils/notification_router.dart';
 import '../widgets/finance/add_transaction_sheet.dart';
 import '../widgets/finance/common.dart';
 import '../widgets/finance/home_header.dart';
@@ -54,8 +57,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
       case NotificationAction.dailyReminderSetting:
         _goToDailySetting();
         break;
-      case NotificationAction.none:
-        break;
+      default:
+        NotificationRouter.open(context, n);
     }
   }
 
@@ -93,7 +96,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                 listenable: _store,
                 builder: (context, _) {
                   return ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 124),
+                    padding: EdgeInsets.fromLTRB(16, 10, 16, Helpers.navClearance(context)),
                     children: [
                       Row(
                         children: [
@@ -147,12 +150,11 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
   /// Konfirmasi dulu sebelum menghapus semua notifikasi.
   Future<void> _confirmClearAll() async {
-    final count = _store.items.length;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => _DeleteConfirmDialog(
+      builder: (_) => const _DeleteConfirmDialog(
         title: 'Hapus semua notifikasi?',
-        message: '$count notifikasi akan dihapus.',
+        message: 'Semua notifikasi akan dihapus.',
       ),
     );
     if (ok == true && mounted) _store.clear();
@@ -231,7 +233,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
           const Divider(height: 1, color: Color(0xFFE6EBF7)),
           _SwitchRow(
             title: 'Pengingat rencana',
-            subtitle: 'Ingatkan setoran sesuai alokasi',
+            subtitle: 'Ingatkan setoran sesuai nominal setoran',
             value: _store.planningOn,
             onChanged: _store.setPlanningOn,
           ),
@@ -439,7 +441,7 @@ class _SwitchRow extends StatelessWidget {
               Switch(
                 value: value,
                 onChanged: onChanged,
-                activeColor: Colors.white,
+                activeThumbColor: Colors.white,
                 activeTrackColor: AppColors.link,
                 inactiveThumbColor: Colors.white,
                 inactiveTrackColor: const Color(0xFFD7E0F5),
@@ -757,12 +759,12 @@ class _DeleteConfirmDialog extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
+            const SizedBox(
               width: 100,
               height: 96,
               child: Stack(
                 clipBehavior: Clip.none,
-                children: const [
+                children: [
                   Center(child: MascotView(size: 88)),
                   Positioned(
                     top: -2,

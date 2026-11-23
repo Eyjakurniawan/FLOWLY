@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../utils/helpers.dart';
+
 import '../utils/app_colors.dart';
 import '../widgets/finance/common.dart';
 import '../widgets/finance/home_header.dart';
@@ -26,7 +28,7 @@ class AboutScreen extends StatelessWidget {
             ),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 124),
+                padding: EdgeInsets.fromLTRB(16, 10, 16, Helpers.navClearance(context)),
                 children: [
                   Row(
                     children: [
@@ -67,7 +69,7 @@ class AboutScreen extends StatelessWidget {
                                   fontSize: 12, color: AppColors.textGrey)),
                           SizedBox(height: 14),
                           Text(
-                            'Uang mengalir, pikiran tetap tenang. Flowly membantu Anda mencatat, merencanakan, dan memahami keuangan sehari-hari.',
+                            'Uang mengalir, pikiran tetap tenang. Flowly membantu kamu mencatat, merencanakan, dan memahami keuangan sehari-hari.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                                 fontSize: 12.5,

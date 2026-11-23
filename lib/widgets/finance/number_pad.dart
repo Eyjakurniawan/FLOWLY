@@ -13,6 +13,17 @@ class PadKey {
 /// Maksimal digit nominal (999 miliar) supaya aman untuk int.
 const int kMaxAmountDigits = 12;
 
+/// Teks batas maksimal untuk notifikasi.
+const String kMaxAmountText = '999.999.999.999';
+
+/// True kalau [key] ditolak karena nominal sudah mencapai batas maksimal.
+bool padKeyExceedsMax(TextEditingController controller, String key) {
+  if (key == PadKey.backspace) return false;
+  final digits = controller.text.replaceAll('.', '');
+  if (digits.isEmpty && key.replaceAll('0', '').isEmpty) return false;
+  return digits.length + key.length > kMaxAmountDigits;
+}
+
 /// Menerapkan satu tekanan tombol ke [controller] (format titik ribuan).
 /// Mengembalikan true kalau teks berubah.
 bool applyPadKey(TextEditingController controller, String key) {
@@ -84,8 +95,8 @@ class NumberPad extends StatelessWidget {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: AppColors.textDark,
-              disabledBackgroundColor: AppColors.primary.withOpacity(0.6),
-              disabledForegroundColor: AppColors.textDark.withOpacity(0.6),
+              disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.6),
+              disabledForegroundColor: AppColors.textDark.withValues(alpha: 0.6),
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),

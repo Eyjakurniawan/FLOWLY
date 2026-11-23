@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../services/connectivity_service.dart';
 import '../utils/app_colors.dart';
 import 'mascot_view.dart';
 
@@ -11,6 +12,8 @@ Future<bool> showDeleteConfirmDialog(
   required String message,
   String confirmLabel = 'Ya, hapus',
 }) async {
+  // Menghapus data butuh internet.
+  if (!ConnectivityService.requireOnline(context)) return false;
   final ok = await showDialog<bool>(
     context: context,
     builder: (_) => DeleteConfirmDialog(
@@ -45,12 +48,12 @@ class DeleteConfirmDialog extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
+            const SizedBox(
               width: 100,
               height: 96,
               child: Stack(
                 clipBehavior: Clip.none,
-                children: const [
+                children: [
                   Center(child: MascotView(size: 88)),
                   Positioned(
                     top: -2,
