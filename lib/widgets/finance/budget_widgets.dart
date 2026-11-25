@@ -50,8 +50,16 @@ class BudgetCard extends StatelessWidget {
       builder: (context, _) {
         final s = budgets.summaryFor(DateTime.now());
         final empty = s.isEmpty;
-        final title =
-            empty ? 'Belum ada anggaran' : '${s.items.length} anggaran aktif';
+        final String title;
+        if (empty) {
+          title = 'Belum ada anggaran';
+        } else if (s.overCount > 0) {
+          title = '${s.overCount} anggaran lewat batas';
+        } else if (s.warningCount > 0) {
+          title = '${s.warningCount} anggaran hampir habis';
+        } else {
+          title = 'Semua anggaran aman';
+        }
         final subtitle = empty
             ? 'Batasi belanja kopi, nongkrong, dan lainnya'
             : '${fin.money(s.totalSpent)} terpakai dari ${fin.money(s.totalLimit)}';
@@ -337,7 +345,12 @@ class BudgetItemCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const MascotView(size: 48),
+              MascotView(
+                size: 48,
+                expression: u.level == BudgetLevel.safe
+                    ? MascotExpression.happy
+                    : MascotExpression.normal,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(

@@ -16,6 +16,7 @@ import '../widgets/finance/home_header.dart';
 import '../widgets/mascot_view.dart';
 import '../widgets/primary_button.dart';
 import 'about_screen.dart';
+import 'budget_screen.dart';
 import 'help_screen.dart';
 import 'notification_screen.dart';
 import 'planning_screen.dart';
@@ -212,6 +213,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
       child: Column(
         children: [
+          _MenuItem(
+            title: 'Anggaran',
+            subtitle: 'Batas belanja per kategori',
+            onTap: () => _open(const BudgetScreen()),
+          ),
+          const _MenuDivider(),
           _MenuItem(
             title: 'Rencana',
             subtitle: 'Target tabungan dan kalkulator',

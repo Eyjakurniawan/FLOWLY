@@ -79,7 +79,7 @@ class _SplashScreenState extends State<SplashScreen>
                             height: 210,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Colors.white.withOpacity(0.08),
+                              color: Colors.white.withValues(alpha: 0.08),
                             ),
                             child: const Center(child: MascotView(size: 150)),
                           ),
@@ -180,7 +180,7 @@ class _WavePainter extends CustomPainter {
 
     // Lapis belakang: terang, transparan, bergerak ke kanan.
     _layer(canvas, size,
-        color: const Color(0xFF3B82F6).withOpacity(0.35),
+        color: const Color(0xFF3B82F6).withValues(alpha: 0.35),
         baseY: 0.22,
         amplitude: 10,
         cycles: 1.5,
@@ -188,7 +188,7 @@ class _WavePainter extends CustomPainter {
 
     // Lapis tengah: bergerak ke kiri, lebih cepat.
     _layer(canvas, size,
-        color: const Color(0xFF2563EB).withOpacity(0.55),
+        color: const Color(0xFF2563EB).withValues(alpha: 0.55),
         baseY: 0.30,
         amplitude: 9,
         cycles: 2,
@@ -218,7 +218,7 @@ class _RingsPainter extends CustomPainter {
     final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1
-      ..color = Colors.white.withOpacity(0.10);
+      ..color = Colors.white.withValues(alpha: 0.10);
 
     for (final r in [140.0, 190.0, 245.0, 310.0, 395.0]) {
       canvas.drawCircle(center, r, paint);

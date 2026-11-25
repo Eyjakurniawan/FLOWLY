@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/finance_models.dart';
 import '../../services/finance_store.dart';
+import '../../utils/app_colors.dart';
 import '../../utils/formatters.dart';
 import '../primary_button.dart';
 import 'common.dart';
@@ -24,7 +25,18 @@ class _AddWalletSheetState extends State<_AddWalletSheet> {
   WalletType _type = WalletType.bank;
   String? _error;
 
-  bool get _canSave => _name.text.trim().isNotEmpty;
+  bool get _hasName => _name.text.trim().isNotEmpty;
+  bool get _hasBalance => _balance.text.trim().isNotEmpty;
+  bool get _canSave => _hasName && _hasBalance;
+
+  /// Pesan di atas tombol selama form belum lengkap.
+  String get _hint {
+    if (!_hasName && !_hasBalance) {
+      return 'Isi nama dompet dan saldo awal dulu untuk menyimpan.';
+    }
+    if (!_hasName) return 'Isi nama dompet dulu untuk menyimpan.';
+    return 'Isi saldo awal dulu untuk menyimpan. Isi 0 jika masih kosong.';
+  }
 
   @override
   void dispose() {
@@ -73,8 +85,31 @@ class _AddWalletSheetState extends State<_AddWalletSheet> {
             ],
           ),
           const FieldLabel('Saldo awal (Rp)'),
-          AmountField(controller: _balance),
-          const SizedBox(height: 22),
+          AmountField(
+            controller: _balance,
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Isi sesuai saldo di rekening atau dompet aslimu sekarang. Isi 0 jika masih kosong. Setelah disimpan, saldo hanya berubah lewat transaksi.',
+            style: TextStyle(
+                fontSize: 12.5, height: 1.4, color: AppColors.textGrey),
+          ),
+          const SizedBox(height: 16),
+          if (!_canSave) ...[
+            Center(
+              child: Text(
+                _hint,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    fontSize: 12.5,
+                    height: 1.4,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.error),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
           PrimaryButton(
             label: 'Simpan Dompet',
             onPressed: _canSave ? _save : null,

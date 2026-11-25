@@ -197,53 +197,22 @@ class _EmptyWallets extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FlowlyCard(
-      padding: const EdgeInsets.all(14),
+    return const FlowlyCard(
+      padding: EdgeInsets.all(14),
       child: DashedBox(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
+          padding: EdgeInsets.fromLTRB(18, 18, 18, 22),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              SizedBox(
-                width: 120,
-                height: 120,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    const MascotView(size: 120),
-                    Positioned(
-                      bottom: 4,
-                      child: Container(
-                        width: 22,
-                        height: 22,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF59E0B),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                              color: const Color(0xFFD97706), width: 1.5),
-                        ),
-                        child: const Text(
-                          'Rp',
-                          style: TextStyle(
-                            fontSize: 8,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 6),
-              const Text(
+              MascotView(size: 120, expression: MascotExpression.coin),
+              SizedBox(height: 6),
+              Text(
                 'Belum ada dompet',
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
               ),
-              const SizedBox(height: 6),
-              const Text(
+              SizedBox(height: 6),
+              Text(
                 'Tambahkan dompet pertama (bank, dompet digital, atau tunai) dan isi saldo awalnya, lalu catat transaksi dari sana.',
                 textAlign: TextAlign.center,
                 style: TextStyle(

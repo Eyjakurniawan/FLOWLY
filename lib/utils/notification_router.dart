@@ -33,7 +33,7 @@ class NotificationRouter {
         final exists =
             name != null && FinanceStore.instance.walletByName(name) != null;
         HomeScreen.openIn(
-            1, exists ? [WalletDetailScreen(walletName: name!)] : const []);
+            1, exists ? [WalletDetailScreen(walletName: name)] : const []);
         return true;
       case NotificationAction.openTransactions:
         HomeScreen.openIn(0, const [TransactionsScreen()]);

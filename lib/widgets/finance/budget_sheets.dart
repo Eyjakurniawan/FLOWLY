@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../models/budget_models.dart';
 import '../../models/finance_models.dart';
-import '../../screens/category_wallet_screen.dart';
 import '../../services/budget_store.dart';
 import '../../services/category_store.dart';
 import '../../services/finance_store.dart';
@@ -31,9 +30,27 @@ class _BudgetSheet extends StatefulWidget {
 class _BudgetSheetState extends State<_BudgetSheet> {
   static const _newKey = '__kategori_baru__';
 
+  /// Warna untuk kategori baru yang dibuat langsung dari sini.
+  static const _palette = <Color>[
+    Color(0xFF1E3A8A),
+    Color(0xFF2563EB),
+    Color(0xFF0284C7),
+    Color(0xFF16A34A),
+    Color(0xFF15803D),
+    Color(0xFFD97706),
+    Color(0xFFDC2626),
+    Color(0xFFBE185D),
+    Color(0xFF7C3AED),
+    Color(0xFF78350F),
+    Color(0xFF64748B),
+  ];
+
   final _amount = TextEditingController();
+  final _newName = TextEditingController();
   TxCategory? _category;
+  bool _creating = false; // true = user memilih "+ Kategori baru…"
   String? _error;
+  String? _nameError;
 
   Budget? get _editing =>
       widget.budgetId == null ? null : BudgetStore.instance.byId(widget.budgetId!);
@@ -49,29 +66,53 @@ class _BudgetSheetState extends State<_BudgetSheet> {
     } else {
       final free = BudgetStore.instance.availableCategories;
       _category = free.isEmpty ? null : free.first;
+      _creating = free.isEmpty; // belum ada kategori bebas -> langsung buat baru
     }
   }
 
   @override
   void dispose() {
     _amount.dispose();
+    _newName.dispose();
     super.dispose();
   }
 
   int get _limit => Fmt.parseAmount(_amount.text);
-  bool get _valid => _category != null && _limit > 0;
+  bool get _hasNewName => _newName.text.trim().isNotEmpty;
+  bool get _hasLimit => _limit > 0;
+  bool get _valid => _creating
+      ? (_hasNewName && _hasLimit)
+      : (_category != null && _hasLimit);
 
-  Future<void> _onPick(String? key) async {
+  /// Pesan di atas tombol selama form belum lengkap.
+  String get _formHint {
+    if (_creating) {
+      if (!_hasNewName && !_hasLimit) {
+        return 'Isi nama kategori dan batas per bulan dulu untuk menyimpan.';
+      }
+      if (!_hasNewName) return 'Isi nama kategori dulu untuk menyimpan.';
+    }
+    return 'Isi batas per bulan dulu untuk menyimpan.';
+  }
+
+  Color _nextFreeColor() {
+    final used = CategoryStore.instance
+        .byType(TxType.expense)
+        .map((c) => c.color)
+        .toSet();
+    for (final c in _palette) {
+      if (!used.contains(c)) return c;
+    }
+    return _palette.first;
+  }
+
+  void _onPick(String? key) {
     if (key == null) return;
     if (key == _newKey) {
-      final added =
-          await CategoryWalletScreen.addCategory(context, TxType.expense);
-      if (!added || !mounted) return;
-      // Kategori baru ditaruh paling akhir di daftar pengeluaran.
-      final list = CategoryStore.instance.byType(TxType.expense);
       setState(() {
-        _category = list.isEmpty ? _category : list.last;
+        _creating = true;
         _error = null;
+        _nameError = null;
       });
       return;
     }
@@ -80,17 +121,44 @@ class _BudgetSheetState extends State<_BudgetSheet> {
         .where((c) => c.name == key);
     if (match.isEmpty) return;
     setState(() {
+      _creating = false;
       _category = match.first;
       _error = null;
+      _nameError = null;
     });
   }
 
   void _save() {
     final store = BudgetStore.instance;
-    final ok = _isEdit
-        ? store.updateLimit(widget.budgetId!, _limit)
-        : store.add(_category!, _limit);
-    if (!ok) {
+    if (_isEdit) {
+      if (!store.updateLimit(widget.budgetId!, _limit)) {
+        setState(() => _error = 'Kategori ini sudah punya anggaran.');
+        return;
+      }
+      Navigator.pop(context, true);
+      return;
+    }
+
+    var category = _category;
+    if (_creating) {
+      final name = _newName.text.trim();
+      final cats = CategoryStore.instance;
+      if (cats.exists(name, TxType.expense)) {
+        setState(() => _nameError = 'Nama kategori itu sudah ada.');
+        return;
+      }
+      if (!cats.add(name, _nextFreeColor(), TxType.expense)) {
+        setState(() => _nameError = 'Kategori gagal dibuat.');
+        return;
+      }
+      final match = cats
+          .byType(TxType.expense)
+          .where((c) => c.name.toLowerCase() == name.toLowerCase());
+      if (match.isEmpty) return;
+      category = match.last;
+    }
+
+    if (category == null || !store.add(category, _limit)) {
       setState(() => _error = 'Kategori ini sudah punya anggaran.');
       return;
     }
@@ -116,7 +184,9 @@ class _BudgetSheetState extends State<_BudgetSheet> {
   String _helper() {
     final c = _category;
     final limit = _limit;
-    if (c == null || limit <= 0) return 'Isi batas pengeluaran per bulan.';
+    if (_creating || c == null || limit <= 0) {
+      return 'Isi batas pengeluaran per bulan.';
+    }
     final fin = FinanceStore.instance;
     final spent = fin.categoryExpenseInMonth(c, DateTime.now());
     final room = limit > spent ? limit - spent : 0;
@@ -131,9 +201,11 @@ class _BudgetSheetState extends State<_BudgetSheet> {
     final names = _isEdit
         ? <String>[_category?.name ?? '']
         : [for (final c in store.availableCategories) c.name];
-    final value = (_category != null && names.contains(_category!.name))
-        ? _category!.name
-        : null;
+    final value = _creating
+        ? _newKey
+        : (_category != null && names.contains(_category!.name))
+            ? _category!.name
+            : null;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -186,6 +258,24 @@ class _BudgetSheetState extends State<_BudgetSheet> {
           ),
           const FieldLabel('Kategori'),
           _dropdown(),
+          if (_creating && !_isEdit) ...[
+            const FieldLabel('Nama kategori baru'),
+            TextField(
+              controller: _newName,
+              autofocus: true,
+              textCapitalization: TextCapitalization.words,
+              decoration:
+                  flowlyField('Contoh: Kopi, Nongkrong', error: _nameError)
+                      .copyWith(
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide:
+                      const BorderSide(color: AppColors.textDark, width: 1.5),
+                ),
+              ),
+              onChanged: (_) => setState(() => _nameError = null),
+            ),
+          ],
           if (_error != null)
             Padding(
               padding: const EdgeInsets.only(top: 6),
@@ -205,7 +295,21 @@ class _BudgetSheetState extends State<_BudgetSheet> {
                 style: const TextStyle(
                     fontSize: 11.5, color: AppColors.textGrey)),
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: 16),
+          if (!_valid) ...[
+            Center(
+              child: Text(
+                _formHint,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    fontSize: 12.5,
+                    height: 1.4,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.error),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
           PrimaryButton(
             label: _isEdit ? 'Simpan perubahan' : 'Simpan anggaran',
             onPressed: _valid ? _save : null,

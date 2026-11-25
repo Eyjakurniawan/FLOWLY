@@ -204,7 +204,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   style: bold,
                   recognizer: TapGestureRecognizer()
                     ..onTap = () {
-                      // TODO: buka halaman Syarat Layanan
+                      
                     },
                 ),
                 const TextSpan(text: ' dan '),
@@ -213,7 +213,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   style: bold,
                   recognizer: TapGestureRecognizer()
                     ..onTap = () {
-                      // TODO: buka halaman Kebijakan Privasi
+                      
                     },
                 ),
               ],

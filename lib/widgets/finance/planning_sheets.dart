@@ -854,7 +854,7 @@ class _CalculatorSheetState extends State<_CalculatorSheet> {
     final fin = FinanceStore.instance;
     const line = Divider(height: 1, thickness: 1, color: Color(0xFFD3DDF5));
     final dateLabel = '${t.day} ${Fmt.monthName(t.month)} ${t.year}';
-    final values = PlanFrequency.values;
+    const values = PlanFrequency.values;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),

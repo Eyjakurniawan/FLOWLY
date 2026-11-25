@@ -79,10 +79,15 @@ class AuthService {
 
   Future<AuthResult> signInWithGoogle() async {
     try {
-      await _auth.signInWithOAuth(
+      final launched = await _auth.signInWithOAuth(
         OAuthProvider.google,
         redirectTo: kIsWeb ? null : AppConstants.oauthRedirect,
       );
+      if (!launched) {
+        return const AuthResult.fail(
+          'Browser Google tidak bisa dibuka. Coba lagi.',
+        );
+      }
       return const AuthResult.ok();
     } on AuthException catch (e) {
       return AuthResult.fail(_translate(e.message));
@@ -155,7 +160,8 @@ class AuthService {
     if (m.contains('invalid login credentials')) {
       return 'Email atau kata sandi salah.';
     }
-    if (m.contains('already registered') || m.contains('already been registered')) {
+    if (m.contains('already registered') ||
+        m.contains('already been registered')) {
       return 'Email ini sudah terdaftar. Silakan masuk.';
     }
     if (m.contains('email not confirmed')) {

@@ -455,10 +455,23 @@ class FinanceStore extends ChangeNotifier {
     notifyListeners();
     idFut?.then((rid) async {
       if (rid == null) return;
-      await AppData.run(
-        () => AppData.db.from(_txTable(t.type)).delete().eq('id', rid),
+      final rows = await AppData.guard(
+        () => AppData.db
+            .from(_txTable(t.type))
+            .delete()
+            .eq('id', rid)
+            .select(),
         message: 'Transaksi gagal dihapus di server.',
       );
+      if (rows == null) return; // gagal: pesan sudah ditampilkan
+      if (rows.isEmpty) {
+        // Server menjawab "berhasil" tapi tidak ada baris yang terhapus
+        // (biasanya karena izin hapus/RLS belum diatur). Sinkronkan ulang
+        // supaya tampilan sama dengan isi database.
+        AppData.report(
+            'Transaksi tidak terhapus di server. Cek izin hapus di Supabase.');
+        await loadRemote();
+      }
     });
     return null;
   }

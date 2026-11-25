@@ -96,6 +96,10 @@ class BudgetMonthSummary {
 
   int get overCount => items.where((u) => u.isOver).length;
 
+  /// Jumlah anggaran yang hampir habis (>= 80% tapi belum lewat batas).
+  int get warningCount =>
+      items.where((u) => u.level == BudgetLevel.warning).length;
+
   double get progress {
     if (totalLimit <= 0) return 0;
     final p = totalSpent / totalLimit;

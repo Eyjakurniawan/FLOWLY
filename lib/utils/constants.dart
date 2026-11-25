@@ -3,7 +3,8 @@ enum MascotExpression {
   normal('maskot_normal.png'),
   wink('maskot_wink.png'),
   happy('maskot_happy.png'),
-  flag('maskot_bendera.png');
+  flag('maskot_bendera.png'),
+  coin('maskot_koin.png');
 
   final String file;
   const MascotExpression(this.file);

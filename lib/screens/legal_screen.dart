@@ -13,7 +13,7 @@ class _Section {
 }
 
 const _intro =
-    'Draf contoh • Diperbarui 20 Oktober 2026. Tinjau bersama konsultan hukum sebelum rilis.';
+    'Draf contoh • Diperbarui 21 November 2026. Tinjau bersama konsultan hukum sebelum rilis.';
 
 const _terms = [
   _Section(
@@ -45,23 +45,23 @@ const _terms = [
 const _privacy = [
   _Section(
     'Data yang kami kumpulkan',
-    'Data akun (nama, email) dan data keuangan yang kamu catat: transaksi, dompet, rencana, dan setoran.',
+    'Data akun (email, kata sandi, nama, foto profil) dan data yang kamu catat: transaksi, dompet, kategori, anggaran, rencana, setoran, dan pengaturan.',
   ),
   _Section(
     'Cara kami memakai data',
-    'Untuk menampilkan saldo, grafik, pengingat, dan saran di aplikasi. Kami tidak menjual datamu.',
+    'Untuk menampilkan saldo, laporan, anggaran, rencana, notifikasi, dan saran di aplikasi. Kami tidak menjual datamu.',
   ),
   _Section(
     'Penyimpanan dan keamanan',
-    'Data disimpan terenkripsi dan hanya bisa diakses dengan akunmu.',
+    'Datamu disimpan secara online di akunmu dan hanya bisa diakses dengan akunmu. Flowly butuh internet untuk menyimpan perubahan.',
   ),
   _Section(
     'Berbagi data',
-    'Data hanya dibagikan ke penyedia infrastruktur yang diperlukan untuk menjalankan layanan, atau jika diwajibkan hukum.',
+    'Hanya dibagikan ke penyedia layanan yang diperlukan untuk menjalankan Flowly, termasuk masuk dengan Google, atau jika diwajibkan hukum.',
   ),
   _Section(
     'Hakmu',
-    'Kamu bisa meminta salinan, koreksi, atau penghapusan data dan akunmu kapan saja.',
+    'Kamu bisa melihat dan mengubah datamu langsung di aplikasi, atau menghapus akunmu kapan saja lewat Pengaturan.',
   ),
   _Section(
     'Kontak',
