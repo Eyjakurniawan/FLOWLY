@@ -144,7 +144,7 @@ class _SetupScreenState extends State<SetupScreen> {
       child: Scaffold(
         body: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
             child: Column(
               children: [
                 SetupHeader(
@@ -189,7 +189,8 @@ class _SetupScreenState extends State<SetupScreen> {
         children: [
           const MascotBubble(
             title: 'Apa tujuanmu?',
-            subtitle: 'Boleh pilih lebih dari satu, atau lewati dulu. Aku sesuaikan tampilannya.',
+            subtitle:
+                'Boleh pilih lebih dari satu, atau lewati dulu. Aku sesuaikan tampilannya.',
             expression: MascotExpression.normal,
           ),
           const SizedBox(height: 20),

@@ -93,7 +93,18 @@ class FlowlyApp extends StatelessWidget {
               textScaler:
                   TextScaler.linear(device * TextScaleStore.instance.scale),
             ),
-            child: child ?? const SizedBox.shrink(),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final app = child ?? const SizedBox.shrink();
+                if (constraints.maxWidth <= 600) return app;
+                return Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 600),
+                    child: app,
+                  ),
+                );
+              },
+            ),
           );
         },
       ),

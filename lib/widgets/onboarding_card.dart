@@ -23,38 +23,62 @@ class OnboardingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(28),
-      child: Container(
-        decoration: const BoxDecoration(gradient: AppColors.navyGradient),
-        child: Stack(
-          children: [
-            Center(child: MascotView(size: 190, expression: expression)),
-            if (showSparkles) ...const [
-              Positioned(
-                left: 56,
-                top: 90,
-                child: Icon(Icons.add, color: AppColors.mascotBlue, size: 22),
-              ),
-              Positioned(
-                right: 60,
-                top: 64,
-                child: Icon(Icons.add, color: AppColors.mascotBlue, size: 22),
-              ),
-            ],
-            Positioned(
-              left: chipPosition == ChipPosition.topLeft ||
-                      chipPosition == ChipPosition.bottomLeft
-                  ? 12
-                  : null,
-              right: chipPosition == ChipPosition.bottomRight ? 12 : null,
-              top: chipPosition == ChipPosition.topLeft ? 12 : null,
-              bottom: chipPosition == ChipPosition.topLeft ? null : 12,
-              child: chip,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final mascotSize = (constraints.maxWidth < constraints.maxHeight
+                ? constraints.maxWidth * 0.58
+                : constraints.maxHeight * 0.58)
+            .clamp(112.0, 190.0)
+            .toDouble();
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(28),
+          child: Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: const BoxDecoration(gradient: AppColors.navyGradient),
+            child: Stack(
+              children: [
+                Center(
+                  child: MascotView(
+                    size: mascotSize,
+                    expression: expression,
+                  ),
+                ),
+                if (showSparkles) ...const [
+                  Positioned(
+                    left: 56,
+                    top: 90,
+                    child: Icon(
+                      Icons.add,
+                      color: AppColors.mascotBlue,
+                      size: 22,
+                    ),
+                  ),
+                  Positioned(
+                    right: 60,
+                    top: 64,
+                    child: Icon(
+                      Icons.add,
+                      color: AppColors.mascotBlue,
+                      size: 22,
+                    ),
+                  ),
+                ],
+                Positioned(
+                  left: chipPosition == ChipPosition.topLeft ||
+                          chipPosition == ChipPosition.bottomLeft
+                      ? 12
+                      : null,
+                  right: chipPosition == ChipPosition.bottomRight ? 12 : null,
+                  top: chipPosition == ChipPosition.topLeft ? 12 : null,
+                  bottom: chipPosition == ChipPosition.topLeft ? null : 12,
+                  child: chip,
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

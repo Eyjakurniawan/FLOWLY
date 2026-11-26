@@ -75,9 +75,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     ),
   ];
 
-  // Tinggi area judul + deskripsi (cukup untuk judul 2 baris + deskripsi 4 baris).
-  static const double _textAreaHeight = 180;
-
   bool get _isLast => _index == _pages.length - 1;
 
   @override
@@ -145,52 +142,57 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   onPageChanged: (i) => setState(() => _index = i),
                   itemBuilder: (_, i) {
                     final p = _pages[i];
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Kartu mengisi semua sisa ruang, sedangkan area teks
-                        // di bawahnya punya tinggi TETAP, sehingga ukuran
-                        // kartu biru sama di semua halaman walau panjang
-                        // judul/deskripsinya berbeda.
-                        Expanded(
-                          child: SizedBox(
-                            width: double.infinity,
-                            child: OnboardingCard(
-                              chipPosition: p.chipPosition,
-                              chip: p.chip,
-                              showSparkles: p.sparkles,
-                              expression: p.expression,
+                    return LayoutBuilder(
+                      builder: (context, constraints) {
+                        final textAreaHeight =
+                            constraints.maxHeight < 520 ? 150.0 : 180.0;
+                        final titleSize =
+                            constraints.maxWidth < 340 ? 23.0 : 26.0;
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: SizedBox(
+                                width: double.infinity,
+                                child: OnboardingCard(
+                                  chipPosition: p.chipPosition,
+                                  chip: p.chip,
+                                  showSparkles: p.sparkles,
+                                  expression: p.expression,
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                        const SizedBox(height: 28),
-                        SizedBox(
-                          height: _textAreaHeight,
-                          width: double.infinity,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                p.title,
-                                style: const TextStyle(
-                                  fontSize: 26,
-                                  height: 1.2,
-                                  fontWeight: FontWeight.w800,
-                                ),
+                            const SizedBox(height: 28),
+                            SizedBox(
+                              height: textAreaHeight,
+                              width: double.infinity,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    p.title,
+                                    style: TextStyle(
+                                      fontSize: titleSize,
+                                      height: 1.2,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  Text(
+                                    p.description,
+                                    style: TextStyle(
+                                      fontSize:
+                                          constraints.maxWidth < 340 ? 12 : 13,
+                                      height: 1.5,
+                                      color: AppColors.textGrey,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 14),
-                              Text(
-                                p.description,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  height: 1.5,
-                                  color: AppColors.textGrey,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                            ),
+                          ],
+                        );
+                      },
                     );
                   },
                 ),
