@@ -239,7 +239,7 @@ class EmptyLedgerCard extends StatelessWidget {
         width: double.infinity,
         child: Column(
           children: [
-            MascotView(size: 130),
+            MascotView(size: 130, expression: MascotExpression.coin),
             SizedBox(height: 10),
             Text('Yuk catat yang pertama!',
                 style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),

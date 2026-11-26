@@ -8,9 +8,12 @@ import 'screens/reset_password_screen.dart';
 import 'services/app_data.dart';
 import 'services/auth_service.dart';
 import 'services/connectivity_service.dart';
+import 'services/local_notification_service.dart';
+import 'services/notification_store.dart';
 import 'services/supabase_service.dart';
 import 'services/text_scale_store.dart';
 import 'utils/helpers.dart';
+import 'utils/notification_router.dart';
 import 'utils/app_theme.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -31,6 +34,23 @@ Future<void> main() async {
   ));
 
   await SupabaseService.init();
+
+  // Notifikasi pengingat di luar aplikasi (bilah notifikasi HP).
+  await LocalNotificationService.instance.init();
+  LocalNotificationService.instance.onTap = (action) {
+    final ctx = navigatorKey.currentContext;
+    if (ctx == null) return;
+    NotificationRouter.open(
+      ctx,
+      AppNotification(
+        id: 0,
+        title: '',
+        body: '',
+        time: DateTime.now(),
+        action: action,
+      ),
+    );
+  };
 
   // Ukuran huruf pilihan pengguna (Pengaturan -> Ukuran huruf).
   await TextScaleStore.instance.load();

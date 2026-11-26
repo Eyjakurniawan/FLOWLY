@@ -4,6 +4,7 @@ import '../../models/planning_models.dart';
 import '../../services/finance_store.dart';
 import '../../services/planning_store.dart';
 import '../../utils/app_colors.dart';
+import '../../utils/constants.dart';
 import '../../utils/formatters.dart';
 import '../mascot_view.dart';
 import 'common.dart';
@@ -163,7 +164,7 @@ class PlanningEmptyState extends StatelessWidget {
       padding: EdgeInsets.fromLTRB(28, 24, 28, 0),
       child: Column(
         children: [
-          MascotView(size: 150),
+          MascotView(size: 160, expression: MascotExpression.flag),
           SizedBox(height: 10),
           Text('Belum ada rencana',
               style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),

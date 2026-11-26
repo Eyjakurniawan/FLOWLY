@@ -18,19 +18,19 @@ const _intro =
 const _terms = [
   _Section(
     'Tentang layanan',
-    'Flowly adalah aplikasi pencatat keuangan pribadi. Flowly tidak menyimpan uang, tidak memproses pembayaran, dan bukan penasihat keuangan.',
+    'Flowly adalah aplikasi pencatat keuangan pribadi. Flowly tidak menyimpan uang, tidak memproses pembayaran, tidak terhubung ke rekening bank, dan bukan penasihat keuangan.',
   ),
   _Section(
     'Akun',
-    'Kamu bertanggung jawab atas kerahasiaan akun dan kata sandimu serta atas data yang kamu masukkan.',
-  ),
-  _Section(
-    'Penggunaan yang wajar',
-    'Jangan menyalahgunakan aplikasi, mencoba mengakses data pengguna lain, atau mengganggu layanan.',
+    'Kamu bertanggung jawab atas kerahasiaan akun dan kata sandimu serta data yang kamu masukkan.',
   ),
   _Section(
     'Keakuratan data',
-    'Saldo, grafik, dan saran dihitung dari catatan yang kamu isi. Hasilnya hanya sebaik data yang dimasukkan.',
+    'Saldo, laporan, dan saran dihitung dari catatanmu, jadi hasilnya hanya sebaik data yang kamu masukkan. Saran alokasi hanyalah perkiraan.',
+  ),
+  _Section(
+    'Penghapusan data',
+    'Data dan akun yang dihapus tidak bisa dikembalikan. Kamu bisa menghapus akun kapan saja di Pengaturan.',
   ),
   _Section(
     'Perubahan layanan',
@@ -38,18 +38,18 @@ const _terms = [
   ),
   _Section(
     'Kontak',
-    'Pertanyaan tentang ketentuan ini bisa dikirim lewat Bantuan dan Dukungan.',
+    'Pertanyaan bisa dikirim lewat Bantuan dan Dukungan.',
   ),
 ];
 
 const _privacy = [
   _Section(
     'Data yang kami kumpulkan',
-    'Data akun (email, kata sandi, nama, foto profil) dan data yang kamu catat: transaksi, dompet, kategori, anggaran, rencana, setoran, dan pengaturan.',
+    'Data akun (email, kata sandi, nama, foto profil) dan data yang kamu catat: transaksi, dompet, kategori, rencana, setoran, dan pengaturan.',
   ),
   _Section(
     'Cara kami memakai data',
-    'Untuk menampilkan saldo, laporan, anggaran, rencana, notifikasi, dan saran di aplikasi. Kami tidak menjual datamu.',
+    'Untuk menampilkan saldo, laporan, rencana, notifikasi, dan saran di aplikasi. Kami tidak menjual datamu.',
   ),
   _Section(
     'Penyimpanan dan keamanan',
